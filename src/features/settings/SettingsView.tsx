@@ -2,13 +2,19 @@ import React from 'react';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import { Segmented } from '@/ui/Segmented';
+import { useToast } from '@/ui/Toast';
 import { useStore, store } from '@/store';
 import { ACCENTS } from '@/domain/color';
-import type { AppState } from '@/domain/types';
+import { defaultState, type AppState } from '@/domain/types';
+import { buildDemoData } from '@/domain/demo';
+import { recomputeDayStats } from '@/domain/stats';
+import { todayISO, defaultClock } from '@/domain/dates';
+import { Haptics } from '@/engines/haptics';
 
 export const SettingsView: React.FC = () => {
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
+  const toast = useToast();
 
   const handleThemeChange = (val: string) => {
     store.set((s: AppState) => {
@@ -20,6 +26,25 @@ export const SettingsView: React.FC = () => {
     store.set((s: AppState) => {
       s.profile.accent = accentId;
     });
+  };
+
+  const handleLoadDemo = () => {
+    const demo = buildDemoData(defaultClock, undefined, settings.theme);
+    store.importAll(demo);
+    store.set((s: AppState) => {
+      recomputeDayStats(s.dayStats, s.blocks, todayISO());
+    });
+    Haptics.success();
+    toast.showToast('Demo data loaded — explore away');
+  };
+
+  const handleRemoveDemo = () => {
+    const fresh = defaultState();
+    fresh.settings.theme = settings.theme;
+    fresh.clearedAt = defaultClock.nowISO();
+    store.importAll(fresh);
+    Haptics.warning();
+    toast.showToast('Demo data removed');
   };
 
   return (
@@ -79,6 +104,24 @@ export const SettingsView: React.FC = () => {
                 })}
               </div>
             </div>
+          </div>
+        </Card>
+
+        <Card title="Demo data">
+          <p style={{ color: 'var(--text-2)', fontSize: '14px', margin: '4px 0 12px' }}>
+            {settings.seeded
+              ? 'Demo sample data is currently loaded.'
+              : 'Populate sample timetable blocks, tasks, notes, and deadlines.'}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Button variant="primary" onClick={handleLoadDemo} data-action="demo-load">
+              Load demo data
+            </Button>
+            {settings.seeded && (
+              <Button variant="secondary" onClick={handleRemoveDemo} data-action="demo-remove">
+                Remove demo data
+              </Button>
+            )}
           </div>
         </Card>
 

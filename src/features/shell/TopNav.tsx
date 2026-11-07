@@ -6,6 +6,7 @@ import type { AppRoute } from '@/hooks';
 import { useStore, store } from '@/store';
 import { fileSaver } from '@/platform';
 import type { AppState } from '@/domain/types';
+import { selectDeadlines, approveDeadline, dismissDeadline } from '@/features/deadlines/deadlinesActions';
 import { CRUMB_MAP } from './Breadcrumb';
 import './TopNav.css';
 
@@ -38,7 +39,7 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
-  const deadlines = useStore((s) => s.deadlines);
+  const deadlines = useStore(selectDeadlines);
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const bellBtnRef = useRef<HTMLButtonElement>(null);
@@ -106,21 +107,11 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   const handleApproveDeadline = (id: string) => {
-    store.set((s: AppState) => {
-      const dl = s.deadlines.find((item) => item.id === id);
-      if (dl) {
-        dl.status = 'approved';
-      }
-    });
+    approveDeadline(id);
   };
 
   const handleDismissDeadline = (id: string) => {
-    store.set((s: AppState) => {
-      const dl = s.deadlines.find((item) => item.id === id);
-      if (dl) {
-        dl.deleted = true;
-      }
-    });
+    dismissDeadline(id);
   };
 
   const crumb = CRUMB_MAP[currentRoute] ?? ['Home', 'Today'];

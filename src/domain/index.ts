@@ -5,4 +5,5 @@ export * from './recurrence';
 export * from './stats';
 export * from './quickAdd';
 export * from './timetableImport';
+export * from './demo';
 

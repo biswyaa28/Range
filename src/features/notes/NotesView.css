@@ -1,0 +1,30 @@
+.notes-item-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.notes-item-wrap .note-item {
+  margin-bottom: 0;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.note-item.swiping {
+  transition: none !important;
+}
+
+.note-item.swiping > :not(.swipe-rv) {
+  position: relative;
+  z-index: 1;
+}
+
+.notes-editor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  padding: 20px 22px;
+}
