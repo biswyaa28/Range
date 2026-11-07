@@ -58,3 +58,4 @@ Range/
 1. **Unidirectional Flow**: Features trigger actions -> Store updates state & stamps timestamps -> subscribers re-render via `useSyncExternalStore`.
 2. **Platform Isolation**: Hardware features (vibration, downloads, storage) are wrapped by `PlatformAdapter` interfaces.
 3. **Spec Alignment**: All features maintain backward compatibility with legacy storage schema version 2 (`personalOS_v1`).
+

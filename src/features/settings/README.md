@@ -6,3 +6,4 @@ User preferences, profile configuration, theme selection, data export/import, an
 ## Rules
 - Mutates profile and settings singletons in the Store.
 - Triggers platform FileSaver for exports and Platform Haptics for feedback.
+

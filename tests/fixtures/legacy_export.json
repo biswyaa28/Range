@@ -1,0 +1,107 @@
+{
+  "blocks": [
+    {
+      "id": "blk-export-1",
+      "createdAt": "2026-04-01T08:00:00.000Z",
+      "updatedAt": "2026-04-01T08:00:00.000Z",
+      "deleted": false,
+      "deviceId": "dev-legacy-export",
+      "title": "Discrete Math",
+      "day": 1,
+      "start": "11:00",
+      "end": "12:30",
+      "category": "class",
+      "done": false,
+      "doneDates": [],
+      "source": "college"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-export-1",
+      "createdAt": "2026-04-01T08:00:00.000Z",
+      "updatedAt": "2026-04-01T08:00:00.000Z",
+      "deleted": false,
+      "deviceId": "dev-legacy-export",
+      "title": "Email TA",
+      "due": "2026-04-02",
+      "priority": "med",
+      "done": false,
+      "category": ""
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-export-1",
+      "createdAt": "2026-04-01T08:00:00.000Z",
+      "updatedAt": "2026-04-01T08:00:00.000Z",
+      "deleted": false,
+      "deviceId": "dev-legacy-export",
+      "title": "Ideas",
+      "body": "Ship small, ship daily.",
+      "pinned": false
+    }
+  ],
+  "deadlines": [
+    {
+      "id": "dl-export-1",
+      "createdAt": "2026-04-01T08:00:00.000Z",
+      "updatedAt": "2026-04-01T08:00:00.000Z",
+      "deleted": false,
+      "deviceId": "dev-legacy-export",
+      "title": "Final Essay",
+      "course": "Literature",
+      "due": "2026-04-20",
+      "type": "assignment",
+      "status": "approved",
+      "source": "college-sync"
+    }
+  ],
+  "dayStats": {
+    "2026-04-01": {
+      "date": "2026-04-01",
+      "blocksDone": 1,
+      "blocksTotal": 1,
+      "tasksDone": 1,
+      "focusMinutes": 45,
+      "updatedAt": "2026-04-01T08:00:00.000Z"
+    }
+  },
+  "profile": {
+    "onboarded": true,
+    "name": "Biswajeet",
+    "greeting": "auto",
+    "role": "CS Student",
+    "level": "Junior",
+    "field": "Engineering",
+    "wake": "07:00",
+    "sleep": "23:00",
+    "bestTime": "Morning",
+    "studyHours": 4,
+    "weeklyGoal": "Pass exams",
+    "focusStyle": "pomodoro",
+    "noise": "pink",
+    "preset": "balanced",
+    "accent": "mono",
+    "customAccent": "",
+    "haptics": { "on": true, "level": "medium", "sound": false },
+    "updatedAt": "2026-04-01T08:00:00.000Z"
+  },
+  "layout": {
+    "order": ["upnext", "tasks"],
+    "size": { "upnext": "M", "tasks": "L" },
+    "hidden": [],
+    "updatedAt": "2026-04-01T08:00:00.000Z"
+  },
+  "settings": {
+    "theme": "dark",
+    "seeded": true,
+    "pomodoro": { "work": 30, "break": 5 },
+    "sound": { "master": 60, "white": 50, "pink": 50, "brown": 50 },
+    "prompter": { "text": "", "size": 48, "speed": 3 },
+    "updatedAt": "2026-04-01T08:00:00.000Z"
+  },
+  "schemaVersion": 2,
+  "deviceId": "dev-legacy-export",
+  "syncedAt": "2026-04-01T08:00:00.000Z"
+}

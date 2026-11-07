@@ -6,3 +6,4 @@ Vitest and Testing Library suites verifying pure domain models, store synchroniz
 ## Rules
 - Fast execution in jsdom environment.
 - Mock platform adapters when testing higher layers.
+

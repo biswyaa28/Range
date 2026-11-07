@@ -8,3 +8,4 @@ export const haptics: HapticsAdapter = webHaptics;
 export const fileSaver: FileSaver = webFileSaver;
 export const storage: StorageAdapter = webStorage;
 export const health: HealthProvider = webHealth;
+

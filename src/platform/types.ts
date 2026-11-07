@@ -30,3 +30,4 @@ export interface HealthProvider {
   isAvailable(): Promise<boolean>;
   getSummary(dateISO: string): Promise<HealthDataSummary | null>;
 }
+

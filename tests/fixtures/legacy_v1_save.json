@@ -1,0 +1,70 @@
+{
+  "blocks": [
+    {
+      "id": "blk-legacy-1",
+      "title": "Data Structures Lecture",
+      "day": 0,
+      "start": "09:00",
+      "end": "10:30",
+      "category": "class",
+      "done": false,
+      "doneDates": ["2026-04-06"],
+      "source": "college"
+    },
+    {
+      "id": "blk-legacy-2",
+      "title": "Gym Workout",
+      "day": "2026-04-10",
+      "start": "17:00",
+      "end": "18:30",
+      "category": "exercise",
+      "done": true,
+      "doneDates": []
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-legacy-1",
+      "title": "Read Chapter 4 Algorithms",
+      "due": "2026-04-12",
+      "priority": "high",
+      "done": false,
+      "category": "study"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-legacy-1",
+      "title": "Course Links",
+      "body": "Portal: https://college.edu",
+      "pinned": true
+    }
+  ],
+  "deadlines": [
+    {
+      "id": "dl-legacy-1",
+      "title": "Project Phase 1",
+      "course": "Operating Systems",
+      "due": "2026-04-15",
+      "type": "assignment",
+      "status": "pending",
+      "source": "college-sync"
+    }
+  ],
+  "dayStats": {
+    "2026-04-06": {
+      "date": "2026-04-06",
+      "blocksTotal": 2,
+      "blocksDone": 1,
+      "tasksDone": 3,
+      "focusMinutes": 50
+    }
+  },
+  "settings": {
+    "theme": "dark",
+    "pomodoro": {
+      "work": 25,
+      "break": 5
+    }
+  }
+}

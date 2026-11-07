@@ -6,3 +6,4 @@ Hardware and environment abstraction layer providing uniform interfaces for web,
 ## Rules
 - All platform implementations must sit behind strict interfaces (Haptics, FileSaver, StorageAdapter, HealthProvider).
 - Application code never calls browser globals or native APIs directly; it consumes platform adapters.
+

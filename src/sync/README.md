@@ -6,3 +6,4 @@ Handles remote synchronization protocols, conflict resolution (last-write-wins b
 ## Rules
 - Operates independently of specific cloud vendors.
 - Interfaces with Store via explicit change sets (`pendingChanges`, `mergeRemote`).
+

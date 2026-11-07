@@ -197,3 +197,4 @@ export function defaultState(): AppState {
     syncedAt: EPOCH_TS,
   };
 }
+

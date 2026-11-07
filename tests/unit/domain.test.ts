@@ -15,3 +15,4 @@ describe('domain defaultState', () => {
     expect(state.settings.theme).toBe('auto');
   });
 });
+
