@@ -25,24 +25,42 @@ export const Popover: React.FC<PopoverProps> = ({
     if (!open || !anchorEl) return;
 
     const updatePosition = () => {
+      const margin = 8;
       const rect = anchorEl.getBoundingClientRect();
       const popEl = popoverRef.current;
-      const popWidth = popEl ? popEl.offsetWidth : 240;
-      const popHeight = popEl ? popEl.offsetHeight : 180;
+      const popRect = popEl?.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      const popWidth = Math.min(
+        popRect?.width ?? popEl?.offsetWidth ?? 240,
+        viewportWidth - margin * 2,
+      );
+      const popHeight = Math.min(
+        popRect?.height ?? popEl?.offsetHeight ?? 180,
+        viewportHeight - margin * 2,
+      );
 
-      let top = rect.bottom + 8 + window.scrollY;
-      let left = rect.left + window.scrollX;
-
-      // Flip upward if overflowing viewport bottom
-      if (rect.bottom + popHeight > window.innerHeight && rect.top > popHeight) {
-        top = rect.top - popHeight - 8 + window.scrollY;
+      let top = rect.bottom + 8 + scrollY;
+      const wouldOverflowBottom = rect.bottom + popHeight + margin > viewportHeight;
+      const flippedTop = rect.top - popHeight - 8 + scrollY;
+      if (wouldOverflowBottom && flippedTop >= scrollY + margin) {
+        top = flippedTop;
       }
+      top = Math.max(
+        scrollY + margin,
+        Math.min(top, scrollY + viewportHeight - popHeight - margin),
+      );
 
-      // Flip leftward if overflowing viewport right
-      if (rect.left + popWidth > window.innerWidth) {
-        left = window.innerWidth - popWidth - 16 + window.scrollX;
+      let left = rect.left + scrollX;
+      if (rect.left + popWidth + margin > viewportWidth) {
+        left = viewportWidth - popWidth - margin + scrollX;
       }
-      if (left < 16) left = 16;
+      left = Math.max(
+        scrollX + margin,
+        Math.min(left, scrollX + viewportWidth - popWidth - margin),
+      );
 
       setCoords({ top, left });
     };
@@ -89,6 +107,8 @@ export const Popover: React.FC<PopoverProps> = ({
       style={{
         top: `${coords.top}px`,
         left: `${coords.left}px`,
+        maxHeight: 'calc(100dvh - 16px)',
+        overflowY: 'auto',
       }}
     >
       {children}

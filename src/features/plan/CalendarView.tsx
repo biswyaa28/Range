@@ -19,6 +19,12 @@ import {
   calLayout,
   toggleBlockDoneOnDate,
 } from '@/domain/recurrence';
+import {
+  dragGhostLabel,
+  moveBlockDay,
+  moveRangeTo,
+  resizeRangeEnd,
+} from '@/domain/calendarDrag';
 import { recomputeDayStats } from '@/domain/stats';
 import {
   store,
@@ -36,6 +42,7 @@ import { Haptics } from '@/engines/haptics';
 import { BlockModal } from './BlockModal';
 import { ImportTimetableModal } from './ImportTimetableModal';
 import { blockCategoryMeta } from './blockCategories';
+import { useCalendarDrag } from './useCalendarDrag';
 import './CalendarView.css';
 
 export type CalendarMode = 'day' | 'week' | 'month';
@@ -63,6 +70,9 @@ interface PopoverState {
 interface ModalState {
   block: Block | null;
   defaultDay: number | string;
+  defaultStart?: string;
+  defaultEnd?: string;
+  defaultRepeat?: 'once' | 'weekly';
 }
 
 function monthShift(iso: string, delta: number): string {
@@ -183,8 +193,10 @@ export const CalendarView: React.FC = () => {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [nowMin, setNowMin] = useState(minuteOfNow);
+  const [announcement, setAnnouncement] = useState('');
 
   const colsRef = useRef<HTMLDivElement | null>(null);
+  const pendingFocusRef = useRef<string | null>(null);
 
   const today = todayISO();
   const dates = useMemo(
@@ -346,6 +358,7 @@ export const CalendarView: React.FC = () => {
         recomputeDayStats(state.dayStats, state.blocks, todayISO());
       });
       closePopover();
+      setAnnouncement('Block deleted');
       Haptics.warning();
       toast.showToast('Block deleted', 'Undo', () => {
         softUndeleteRecord(removed);
@@ -355,6 +368,150 @@ export const CalendarView: React.FC = () => {
       });
     },
     [closePopover, toast],
+  );
+
+  const commitMove = useCallback(
+    (
+      block: Block,
+      range: { start: number; end: number },
+      targetISO: string,
+    ) => {
+      const previousDay = block.day;
+      const nextDay = moveBlockDay(previousDay, targetISO);
+      const nextStart = fmtHM(range.start);
+      const nextEnd = fmtHM(range.end);
+      if (
+        block.start === nextStart &&
+        block.end === nextEnd &&
+        String(previousDay) === String(nextDay)
+      ) {
+        return;
+      }
+
+      store.set((state) => {
+        const current = state.blocks.find((item) => item.id === block.id);
+        if (!current) return;
+        current.start = nextStart;
+        current.end = nextEnd;
+        current.day = nextDay;
+        touchRecord(current);
+        recomputeDayStats(state.dayStats, state.blocks, todayISO());
+      });
+
+      const dayChanged = String(previousDay) !== String(nextDay);
+      setAnnouncement(
+        `${block.title} moved to ${nextStart} to ${nextEnd}` +
+          (dayChanged ? ` on ${fmtShort(targetISO)}` : ''),
+      );
+      pendingFocusRef.current = block.id;
+    },
+    [],
+  );
+
+  const commitResize = useCallback((block: Block, endMinute: number) => {
+    const nextEnd = fmtHM(endMinute);
+    if (block.end === nextEnd) return;
+
+    store.set((state) => {
+      const current = state.blocks.find((item) => item.id === block.id);
+      if (!current) return;
+      current.end = nextEnd;
+      touchRecord(current);
+      recomputeDayStats(state.dayStats, state.blocks, todayISO());
+    });
+
+    setAnnouncement(
+      `${block.title} resized to ${fmtHM(hmToMin(block.start))} to ${nextEnd}`,
+    );
+    pendingFocusRef.current = block.id;
+  }, []);
+
+  const openDragCreate = useCallback(
+    (iso: string, start: number, end: number) => {
+      setModal({
+        block: null,
+        defaultDay: iso,
+        defaultStart: fmtHM(start),
+        defaultEnd: fmtHM(end),
+        defaultRepeat: 'once',
+      });
+    },
+    [],
+  );
+
+  const {
+    preview: drag,
+    onPointerDown: onDragPointerDown,
+    isClickSuppressed,
+  } = useCalendarDrag({
+    mode,
+    blocks,
+    onPickup: () => Haptics.select(),
+    onDrop: () => Haptics.tap(),
+    onCanceled: () => Haptics.warning(),
+    onCreate: openDragCreate,
+    onMove: commitMove,
+    onResize: commitResize,
+  });
+
+  useEffect(() => {
+    const id = pendingFocusRef.current;
+    if (!id) return;
+    pendingFocusRef.current = null;
+    const root = colsRef.current;
+    if (!root) return;
+    const target = Array.from(
+      root.querySelectorAll<HTMLElement>('.cal-blk'),
+    ).find((element) => element.dataset.id === id);
+    if (!target) return;
+    try {
+      target.focus({ preventScroll: true });
+    } catch {
+      target.focus();
+    }
+  });
+
+  const handleBlockKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>, block: Block, iso: string) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const start = hmToMin(block.start);
+      const rawEnd = hmToMin(block.end);
+      const end = rawEnd > start ? rawEnd : start + 30;
+      const duration = end - start;
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        openEditor(block);
+        return;
+      }
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        deleteBlock(block);
+        return;
+      }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const delta = event.key === 'ArrowUp' ? -15 : 15;
+        if (event.shiftKey) {
+          const next = resizeRangeEnd(start, end + delta, grid);
+          if (next.end !== end) commitResize(block, next.end);
+        } else {
+          const next = moveRangeTo(start + delta, duration, grid);
+          if (next.start !== start) commitMove(block, next, iso);
+        }
+        return;
+      }
+      if (
+        mode === 'week' &&
+        (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+      ) {
+        event.preventDefault();
+        const targetISO = addDays(iso, event.key === 'ArrowLeft' ? -1 : 1);
+        commitMove(block, { start, end: start + duration }, targetISO);
+      }
+    },
+    [commitMove, commitResize, deleteBlock, grid, mode, openEditor],
   );
 
   const activePopoverBlock =
@@ -405,7 +562,13 @@ export const CalendarView: React.FC = () => {
             return (
               <div
                 key={iso}
-                className={`cal-col${iso === today ? ' today' : ''}`}
+                className={`cal-col${iso === today ? ' today' : ''}${
+                  drag?.kind === 'move' &&
+                  drag.targetISO === iso &&
+                  drag.targetCol !== drag.homeCol
+                    ? ' drop'
+                    : ''
+                }`}
                 data-iso={iso}
               >
                 <div
@@ -414,11 +577,14 @@ export const CalendarView: React.FC = () => {
                   {renderDayHeader(iso)}
                 </div>
                 <div
-                  className="cal-canvas"
+                  className={`cal-canvas${
+                    drag?.kind === 'create' && drag.iso === iso ? ' creating' : ''
+                  }`}
                   data-iso={iso}
                   data-s={grid.s}
                   data-e={grid.e}
                   style={{ height: `${canvasHeight}px` }}
+                  onPointerDown={onDragPointerDown}
                 >
                   <div className="cal-hl" aria-hidden="true" />
                   {focus.map((range, index) => {
@@ -454,38 +620,75 @@ export const CalendarView: React.FC = () => {
                       <b>{fmtHM(nowMin)}</b>
                     </div>
                   ) : null}
+                  {drag?.kind === 'create' && drag.iso === iso ? (
+                    <div
+                      className="cal-ghost"
+                      style={{
+                        top: `${((drag.start - grid.s) / 60) * CAL_HH}px`,
+                        height: `${((drag.end - drag.start) / 60) * CAL_HH}px`,
+                      }}
+                    >
+                      <b>{dragGhostLabel({ start: drag.start, end: drag.end })}</b>
+                    </div>
+                  ) : null}
                   {layout.map(({ it, col, cols }) => {
                     const block = it.b;
                     const done = blockDoneOn(block, iso);
                     const source = block.source === 'personal' ? 'personal' : 'college';
                     const meta = blockCategoryMeta(String(block.category || 'other'));
                     const height = ((it.e - it.s) / 60) * CAL_HH;
-                    const density = height < 38 ? ' sm' : height < 50 ? ' md' : '';
+                    const dragging =
+                      drag && drag.kind !== 'create' && drag.blockId === block.id
+                        ? drag
+                        : null;
+                    const previewStart = dragging ? dragging.start : it.s;
+                    const previewEnd = dragging ? dragging.end : it.e;
+                    const previewHeight = ((previewEnd - previewStart) / 60) * CAL_HH;
+                    const displayHeight =
+                      dragging?.kind === 'resize'
+                        ? ((dragging.end - it.s) / 60) * CAL_HH
+                        : height;
+                    const density =
+                      previewHeight < 38 ? ' sm' : previewHeight < 50 ? ' md' : '';
+                    const moveDelta =
+                      dragging?.kind === 'move'
+                        ? {
+                            x: dragging.colDx,
+                            y: ((dragging.start - it.s) / 60) * CAL_HH,
+                          }
+                        : null;
                     const ariaLabel =
-                      `${block.title}, ${fmtHM(it.s)} to ${fmtHM(it.e)}, ${source}` +
+                      `${block.title}, ${fmtHM(previewStart)} to ${fmtHM(previewEnd)}, ${source}` +
                       (done ? ', done' : '');
                     return (
                       <button
                         key={`${block.id}-${iso}`}
                         type="button"
+                        data-id={block.id}
+                        data-iso={iso}
                         className={`cal-blk${density}${done ? ' done' : ''}${
                           typeof block.day === 'string' ? ' off' : ''
-                        }`}
+                        }${dragging ? ' dragging' : ''}`}
                         style={{
                           top: `${((it.s - grid.s) / 60) * CAL_HH}px`,
-                          height: `${height - 2}px`,
+                          height: `${Math.max(0, displayHeight - 2)}px`,
                           left: `calc(${((col * 100) / cols).toFixed(2)}% + 1px)`,
                           width: `calc(${(100 / cols).toFixed(2)}% - 2px)`,
+                          transform: moveDelta
+                            ? `translate(${moveDelta.x}px, ${moveDelta.y}px)`
+                            : undefined,
                         }}
                         aria-label={ariaLabel}
                         aria-haspopup="dialog"
-                        onClick={(event) =>
+                        onClick={(event) => {
+                          if (isClickSuppressed()) return;
                           setPopover({
                             blockId: block.id,
                             iso,
                             anchor: event.currentTarget,
-                          })
-                        }
+                          });
+                        }}
+                        onKeyDown={(event) => handleBlockKeyDown(event, block, iso)}
                       >
                         <span className="cb-t">
                           <Icon name={meta.icon} size={11} />
@@ -493,13 +696,14 @@ export const CalendarView: React.FC = () => {
                             <Icon name="check" size={11} className="cal-done-mark" />
                           ) : null}
                           <span className="cb-time">
-                            {fmtHM(it.s)}–{fmtHM(it.e)}
+                            {fmtHM(previewStart)}–{fmtHM(previewEnd)}
                           </span>
                         </span>
                         <span className="cb-title">{block.title}</span>
                         <span className="cb-src">
                           {source === 'personal' ? 'Personal' : 'College'}
                         </span>
+                        <span className="rzg" aria-hidden="true" />
                       </button>
                     );
                   })}
@@ -576,9 +780,12 @@ export const CalendarView: React.FC = () => {
         <h1>Calendar</h1>
         <div className="rule" />
         <p className="hint">
-          Day, week and month over your blocks. Add a block or import a timetable to plan
-          your week.
+          Drag the empty grid to add a block, drag a block to move it, or drag its bottom
+          edge to resize.
         </p>
+      </div>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
       </div>
 
       <div className="cal-bar">
@@ -694,6 +901,9 @@ export const CalendarView: React.FC = () => {
         onClose={() => setModal(null)}
         block={modal?.block ?? null}
         defaultDay={modal?.defaultDay ?? today}
+        defaultStart={modal?.defaultStart}
+        defaultEnd={modal?.defaultEnd}
+        defaultRepeat={modal?.defaultRepeat}
       />
 
       <ImportTimetableModal open={importOpen} onClose={() => setImportOpen(false)} />

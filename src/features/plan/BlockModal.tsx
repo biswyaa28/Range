@@ -14,6 +14,9 @@ export interface BlockModalProps {
   onClose: () => void;
   block: Block | null;
   defaultDay: number | string;
+  defaultStart?: string;
+  defaultEnd?: string;
+  defaultRepeat?: 'weekly' | 'once';
 }
 
 type RepeatMode = 'weekly' | 'once';
@@ -26,7 +29,15 @@ function presetWeekday(day: number | string): number {
   return typeof day === 'number' ? day : mondayIndex(fromISO(day));
 }
 
-export const BlockModal: React.FC<BlockModalProps> = ({ open, onClose, block, defaultDay }) => {
+export const BlockModal: React.FC<BlockModalProps> = ({
+  open,
+  onClose,
+  block,
+  defaultDay,
+  defaultStart,
+  defaultEnd,
+  defaultRepeat,
+}) => {
   const toast = useToast();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('class');
@@ -61,12 +72,12 @@ export const BlockModal: React.FC<BlockModalProps> = ({ open, onClose, block, de
     setTitle('');
     setCategory('class');
     setSource('personal');
-    setRepeat('weekly');
+    setRepeat(defaultRepeat ?? 'weekly');
     setDate(presetDate(defaultDay));
     setWeekday(presetWeekday(defaultDay));
-    setStart('09:00');
-    setEnd('10:00');
-  }, [open, block, defaultDay]);
+    setStart(defaultStart ?? '09:00');
+    setEnd(defaultEnd ?? '10:00');
+  }, [open, block, defaultDay, defaultStart, defaultEnd, defaultRepeat]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();

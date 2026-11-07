@@ -14,9 +14,36 @@
   text-align: left;
   font: inherit;
   color: inherit;
-  cursor: pointer;
+  cursor: grab;
   -webkit-appearance: none;
   appearance: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.plan-cal .cal-blk.dragging {
+  cursor: grabbing;
+  transition: none;
+  z-index: 30;
+  opacity: 0.96;
+}
+
+.plan-cal .cal-canvas.creating {
+  cursor: crosshair;
+}
+
+.plan-cal .cal-ghost {
+  transition: none;
+}
+
+body.plan-cal-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grabbing;
+}
+
+body.plan-cal-dragging .cal-blk {
+  cursor: grabbing;
 }
 
 .plan-cal .cal-blk:focus-visible,
@@ -220,5 +247,10 @@
   .plan-cal .cal-date.anim-l,
   .plan-cal .cal-date.anim-r {
     animation: none;
+  }
+
+  .plan-cal .cal-blk,
+  .plan-cal .cal-ghost {
+    transition: none;
   }
 }

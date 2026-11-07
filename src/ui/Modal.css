@@ -17,6 +17,7 @@
   width: 100%;
   max-width: 520px;
   max-height: calc(100vh - 60px);
+  max-height: calc(100dvh - 60px);
   overflow-y: auto;
   background: var(--surface, #ffffff);
   border: 1px solid var(--border);
@@ -89,6 +90,7 @@
 
   .modal-container {
     max-width: 100%;
+    max-height: calc(100dvh - 12px);
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     padding: 24px 20px calc(24px + env(safe-area-inset-bottom));

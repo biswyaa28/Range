@@ -222,6 +222,48 @@ describe('CalendarView', () => {
     expect(screen.queryByRole('button', { name: /Import \d+ block/ })).toBeNull();
   });
 
+  it('moves and resizes a focused block with the keyboard', () => {
+    store.set((state) => {
+      state.blocks.push(
+        makeBlock({
+          id: 'keyboard-1',
+          title: 'OS Lecture',
+          day: todayWeekday,
+          start: '09:00',
+          end: '10:30',
+        }),
+      );
+    });
+
+    renderCalendar();
+
+    const block = screen.getByRole('button', {
+      name: 'OS Lecture, 09:00 to 10:30, college',
+    });
+    block.focus();
+    fireEvent.keyDown(block, { key: 'ArrowDown' });
+
+    expect(store.get().blocks[0]?.start).toBe('09:15');
+    expect(store.get().blocks[0]?.end).toBe('10:45');
+    expect(screen.getByRole('status').textContent).toBe(
+      'OS Lecture moved to 09:15 to 10:45',
+    );
+
+    const moved = screen.getByRole('button', {
+      name: 'OS Lecture, 09:15 to 10:45, college',
+    });
+    moved.focus();
+    fireEvent.keyDown(moved, { key: 'ArrowUp', shiftKey: true });
+
+    expect(store.get().blocks[0]?.end).toBe('10:30');
+    expect(screen.getByRole('status').textContent).toBe(
+      'OS Lecture resized to 09:15 to 10:30',
+    );
+    expect(screen.getByRole('button', { name: /OS Lecture, 09:15 to 10:30/ })).toBe(
+      document.activeElement,
+    );
+  });
+
   it('opens a month day in day view', () => {
     const { container } = renderCalendar();
 
