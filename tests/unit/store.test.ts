@@ -292,3 +292,4 @@ describe('PersonalStore and persistence operations', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });
+

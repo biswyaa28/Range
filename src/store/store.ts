@@ -138,14 +138,12 @@ export class PersonalStore {
   private scheduleFlush(): void {
     if (this.debounceMs <= 0) {
       this.writeNowState(this.data);
-      this.notify();
       return;
     }
     if (this.flushTimer) return;
     this.flushTimer = setTimeout(() => {
       this.flushTimer = null;
       this.writeNowState(this.data);
-      this.notify();
     }, this.debounceMs);
   }
 
@@ -162,6 +160,18 @@ export class PersonalStore {
       mutator(this.data);
     }
     this.snap = diffAndStampSingletons(this.data, this.snap, this.clock);
+    this.data = {
+      ...this.data,
+      profile: { ...this.data.profile },
+      settings: { ...this.data.settings },
+      layout: { ...this.data.layout },
+      blocks: [...this.data.blocks],
+      tasks: [...this.data.tasks],
+      notes: [...this.data.notes],
+      deadlines: [...this.data.deadlines],
+      dayStats: { ...this.data.dayStats },
+    };
+    this.notify();
     this.scheduleFlush();
   }
 

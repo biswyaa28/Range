@@ -132,3 +132,4 @@ export function validateTimetableImport(rawText: string): TimetableImportResult 
 
   return { valid, errors };
 }
+

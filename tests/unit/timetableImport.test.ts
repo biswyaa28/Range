@@ -102,3 +102,4 @@ describe('domain timetableImport validator', () => {
     expect(res.errors[1]?.row).toBe(2);
   });
 });
+

@@ -1,0 +1,26 @@
+.crumb {
+  pointer-events: auto;
+  max-width: 1320px;
+  margin: 14px auto 0;
+  padding: 0 28px;
+  font-size: 12.5px;
+  color: var(--text-2, #8e8e93);
+  letter-spacing: 0.01em;
+}
+
+.crumb b {
+  color: var(--text-3, #636366);
+  font-weight: 600;
+}
+
+.crumb__sep {
+  opacity: 0.5;
+}
+
+@media (max-width: 699px) {
+  .crumb {
+    margin-top: 10px;
+    padding: 0 16px;
+  }
+}
+

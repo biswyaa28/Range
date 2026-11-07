@@ -15,3 +15,4 @@ export function useStore<T = AppState>(
     () => selector(customStore.get()),
   );
 }
+

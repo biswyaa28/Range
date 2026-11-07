@@ -116,3 +116,4 @@ export function diffAndStampSingletons(
   // Re-snapshot AFTER stamping timestamps
   return createSingletonSnapshot(state);
 }
+

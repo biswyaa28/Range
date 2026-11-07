@@ -1,0 +1,25 @@
+.progress-ring {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.progress-ring__track {
+  stroke: var(--border, rgba(0, 0, 0, 0.08));
+}
+
+[data-theme='dark'] .progress-ring__track {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.progress-ring__fill {
+  stroke: var(--accent, #1d1d1f);
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-ring__fill,
+  .progress-ring__fill--no-anim {
+    transition: none !important;
+  }
+}
+

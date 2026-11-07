@@ -1,0 +1,51 @@
+.tabbar {
+  display: none;
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  z-index: 60;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 6px;
+  background: var(--glass, rgba(255, 255, 255, 0.75));
+  border: 1px solid var(--card-bd, rgba(0, 0, 0, 0.08));
+  border-radius: 999px;
+  box-shadow: var(--shadow-2, 0 16px 36px rgba(0, 0, 0, 0.12));
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+.tabbar .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--text-2, #8e8e93);
+  border-radius: 999px;
+  cursor: pointer;
+  font: 500 11px var(--sans, -apple-system, BlinkMacSystemFont, sans-serif);
+  transition: color 0.2s, background 0.2s;
+  touch-action: manipulation;
+}
+
+.tabbar .tab svg {
+  width: 22px;
+  height: 22px;
+}
+
+.tabbar .tab.active {
+  color: var(--text, #1d1d1f);
+  background: var(--surface-2, rgba(0, 0, 0, 0.05));
+}
+
+@media (max-width: 699px) {
+  .tabbar {
+    display: grid;
+  }
+}
+

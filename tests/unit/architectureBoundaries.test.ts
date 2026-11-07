@@ -60,3 +60,4 @@ describe('Storage boundary and no direct localStorage rule', () => {
     expect(violations).toEqual([]);
   });
 });
+

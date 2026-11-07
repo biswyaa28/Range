@@ -1,0 +1,15 @@
+.sparkline {
+  display: inline-block;
+  vertical-align: middle;
+  overflow: visible;
+}
+
+.sparkline__line {
+  stroke: var(--accent, #1d1d1f);
+}
+
+.sparkline__area {
+  fill: var(--accent, #1d1d1f);
+  opacity: 0.12;
+}
+

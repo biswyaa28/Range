@@ -1,0 +1,32 @@
+.popover {
+  position: absolute;
+  z-index: 80;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card, 20px);
+  padding: 16px;
+  box-shadow: var(--shadow-2);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  min-width: 220px;
+  max-width: 320px;
+  animation: popoverFadeIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}
+

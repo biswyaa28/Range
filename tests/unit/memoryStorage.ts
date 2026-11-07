@@ -19,3 +19,4 @@ export class MemoryStorage implements StorageAdapter {
     this.map.clear();
   }
 }
+

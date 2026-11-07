@@ -51,3 +51,4 @@ export class SequenceIdGen implements IdGen {
 }
 
 export const defaultIdGen = new CryptoIdGen();
+
