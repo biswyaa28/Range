@@ -114,9 +114,9 @@ test.describe('Tasks View Mobile (390px)', () => {
     // Perform swipe right to complete
     const box = await taskRow.boundingBox();
     if (box) {
-      await page.mouse.move(box.x + 30, box.y + box.height / 2);
+      await page.mouse.move(box.x + 80, box.y + box.height / 2);
       await page.mouse.down();
-      await page.mouse.move(box.x + 180, box.y + box.height / 2, { steps: 5 });
+      await page.mouse.move(box.x + 240, box.y + box.height / 2, { steps: 5 });
       await page.mouse.up();
     }
 

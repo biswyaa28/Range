@@ -10,7 +10,7 @@
 }
 
 .toast {
-  pointer-events: auto;
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -26,6 +26,7 @@
 }
 
 .toast-action-btn {
+  pointer-events: auto;
   background: none;
   border: none;
   color: var(--accent-text, #34c759);
