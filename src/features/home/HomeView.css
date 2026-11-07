@@ -1,0 +1,65 @@
+/* Home-only polish on top of the shared bento styles in components.css. */
+
+/* CSS-only tooltips for the weekly bars and streak sparkline. */
+.bar[data-tip],
+.sbar[data-tip] {
+  position: relative;
+}
+
+.bar[data-tip]::after,
+.sbar[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 4px);
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: 600 11.5px var(--sans);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  z-index: 6;
+}
+
+.bar[data-tip]:hover::after,
+.bar[data-tip]:focus-visible::after,
+.sbar[data-tip]:hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* The lifted card must track the pointer without any spring lag. */
+.card.drag-ghost {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Cards scale their own content; keep the bento row heights honest. */
+.bento > .card {
+  min-height: 0;
+}
+
+/* On phones the customize chrome stacks without horizontal overflow. */
+@media (max-width: 699px) {
+  .editbar {
+    gap: 8px;
+  }
+  .editbar .ehint {
+    display: none;
+  }
+  .ctools {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar[data-tip]::after,
+  .sbar[data-tip]::after {
+    transition: none;
+  }
+}

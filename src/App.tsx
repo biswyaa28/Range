@@ -78,7 +78,7 @@ export const App: React.FC = () => {
     switch (route) {
       case 'home':
       case 'today':
-        return <HomeView />;
+        return <HomeView onNavigate={navigate} />;
       case 'plan':
       case 'timetable':
       case 'deadlines':
@@ -97,7 +97,7 @@ export const App: React.FC = () => {
       case 'settings':
         return <SettingsView />;
       default:
-        return <HomeView />;
+        return <HomeView onNavigate={navigate} />;
     }
   };
 

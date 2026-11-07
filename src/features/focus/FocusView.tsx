@@ -9,7 +9,9 @@ export const FocusView: React.FC = () => {
   return (
     <div className="view-content">
       <div className="view-head">
-        <h1>Focus</h1>
+        <h1 id="focus-start" tabIndex={-1}>
+          Focus
+        </h1>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '20px' }}>
         <Card title="Pomodoro & ambient sounds">
