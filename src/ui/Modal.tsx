@@ -112,7 +112,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         ref={containerRef}
-        className="modal-container"
+        className="modal-container modal-box"
         role="dialog"
         aria-modal="true"
         aria-label={title || ariaLabel || 'Dialog'}
