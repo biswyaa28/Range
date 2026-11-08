@@ -7,6 +7,10 @@ async function loadDemo(page: Page) {
   await expect(page.locator('[data-action="demo-remove"]')).toBeVisible();
   await page.goto('/#home');
   await expect(page.locator('.bento .card').first()).toBeVisible();
+  await page.addStyleTag({
+    content:
+      '* { transition: none !important; animation: none !important; }',
+  });
 }
 
 async function noOverflow(page: Page) {
@@ -82,8 +86,9 @@ test.describe('Focus mode and command palette desktop', () => {
     await loadDemo(page);
 
     await page.keyboard.press('Control+k');
-    await expect(page.locator('.pal')).toBeVisible();
-    await expect(page.locator('#pal-q')).toBeFocused();
+    const palette = page.locator('[role="dialog"].pal');
+    await expect(palette).toBeVisible();
+    await expect(palette.locator('#pal-q')).toBeFocused();
     await page.fill('#pal-q', 'plan');
     await expect(page.locator('.pal-row').first()).toContainText('Plan');
     await page.keyboard.press('Enter');
