@@ -9,3 +9,9 @@ export const fileSaver: FileSaver = webFileSaver;
 export const storage: StorageAdapter = webStorage;
 export const health: HealthProvider = webHealth;
 
+export const platformName = 'web' as const;
+
+export function isNative(): boolean {
+  return false;
+}
+
