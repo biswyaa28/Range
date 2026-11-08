@@ -25,12 +25,19 @@
 - **UI Copy**: Sentence case for all UI labels, button text, and headings.
 - **Persistence**: Retain storage key `"personalOS_v1"`, backup `"personalOS_v1_backup"`, and schema version `2`.
 - **Incremental Migration**: Port one feature at a time, backed by tests.
+- **Motion/performance**: Route views are lazy-loaded behind `Suspense`; CSS transitions
+  may animate only `transform` and `opacity`. Use `scripts/check-motion-css.mjs` after builds.
+- **Platform readiness**: `src/platform/index.ts` exposes web adapters plus `isNative()` and
+  `platformName`; native implementations are not part of this port.
 
 ## Verification Commands (Run Before Finishing)
 1. `npm run typecheck`
 2. `npm run lint`
 3. `npm run test`
 4. `npm run build`
+5. `npm run e2e`
+
+The combined gate is `npm run check` (including the built-CSS motion scan).
 
 ## Reporting Standard
 Keep agent completion reports concise and capped at 8 lines.

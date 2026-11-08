@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-motion-css.mjs && npm run e2e"
   },
   "dependencies": {
     "react": "^18.3.1",
