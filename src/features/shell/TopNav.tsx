@@ -4,7 +4,7 @@ import { Popover } from '@/ui/Popover';
 import { Kbd } from '@/ui/Kbd';
 import type { AppRoute } from '@/hooks';
 import { useStore, store } from '@/store';
-import { fileSaver } from '@/platform';
+import { fileSaver, platformName } from '@/platform';
 import { exportFilename } from '@/domain/backup';
 import { todayISO } from '@/domain/dates';
 import { Haptics } from '@/engines';
@@ -119,7 +119,11 @@ export const TopNav: React.FC<TopNavProps> = ({
   const crumb = CRUMB_MAP[currentRoute] ?? ['Home', 'Today'];
 
   return (
-    <div className="topbar" id="topbar">
+    <div
+      className={`topbar${platformName === 'macos' ? ' native-macos' : ''}`}
+      id="topbar"
+      data-tauri-drag-region={platformName === 'macos' ? true : undefined}
+    >
       <button
         type="button"
         className="brand"

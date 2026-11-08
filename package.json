@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -14,12 +16,16 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-motion-css.mjs && npm run e2e"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-fs": "^2.7.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.49.1",
+    "@tauri-apps/cli": "^2.12.4",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^20.17.10",
     "@types/react": "^18.3.18",

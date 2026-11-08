@@ -15,6 +15,10 @@
   position: relative;
 }
 
+.topbar.native-macos {
+  padding-left: 78px;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;

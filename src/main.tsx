@@ -4,13 +4,20 @@ import { App } from './App';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
+import { initializePlatform } from './platform';
 
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  );
+async function bootstrap(): Promise<void> {
+  await initializePlatform();
+
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
+    );
+  }
 }
+
+void bootstrap();
 
