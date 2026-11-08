@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Haptics } from '@/engines';
 import './Toast.css';
 
 export interface ToastItem {
@@ -51,6 +52,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 type="button"
                 className="toast-action-btn"
                 onClick={() => {
+                  Haptics.tap();
                   t.onAction?.();
                   dismissToast(t.id);
                 }}

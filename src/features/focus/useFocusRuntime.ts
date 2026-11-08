@@ -21,6 +21,7 @@ export function useFocusRuntime(): void {
     pomodoro.setCallbacks({
       onStart: () => {
         noise.ensureContext();
+        Haptics.tap();
       },
       onSessionEnd: (info) => {
         if (info.mode === 'work') {

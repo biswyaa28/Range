@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from '@/ui/Icon';
+import { Haptics } from '@/engines';
 import type { AppRoute } from '@/hooks';
 import './BottomTabBar.css';
 
@@ -36,7 +37,10 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute, onNavi
             key={tab.id}
             type="button"
             className={`tab${isActive ? ' active' : ''}`}
-            onClick={() => onNavigate(tab.id)}
+            onClick={() => {
+              Haptics.select();
+              onNavigate(tab.id);
+            }}
             aria-current={isActive ? 'page' : undefined}
           >
             <Icon name={tab.icon} />

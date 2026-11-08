@@ -104,6 +104,7 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
 
   useEffect(() => {
     if (!open) return;
+    Haptics.tap();
     openerRef.current = document.activeElement as HTMLElement | null;
     setQuery('');
     setSelected(0);

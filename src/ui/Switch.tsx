@@ -1,4 +1,5 @@
 import React from 'react';
+import { Haptics } from '@/engines';
 import './Switch.css';
 
 export interface SwitchProps {
@@ -16,7 +17,10 @@ export const Switch: React.FC<SwitchProps> = ({
   className = '',
   'aria-label': ariaLabel,
 }) => {
-  const toggle = () => onChange(!checked);
+  const toggle = () => {
+    Haptics.tap();
+    onChange(!checked);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === ' ' || e.key === 'Enter') {

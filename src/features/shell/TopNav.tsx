@@ -7,6 +7,7 @@ import { useStore, store } from '@/store';
 import { fileSaver } from '@/platform';
 import { exportFilename } from '@/domain/backup';
 import { todayISO } from '@/domain/dates';
+import { Haptics } from '@/engines';
 import type { AppState } from '@/domain/types';
 import { selectDeadlines, approveDeadline, dismissDeadline } from '@/features/deadlines/deadlinesActions';
 import { CRUMB_MAP } from './Breadcrumb';
@@ -139,7 +140,10 @@ export const TopNav: React.FC<TopNavProps> = ({
             type="button"
             className={`tab-btn${activeTabId === t.id ? ' active' : ''}`}
             data-tab={t.id}
-            onClick={() => onNavigate(t.id)}
+            onClick={() => {
+              Haptics.select();
+              onNavigate(t.id);
+            }}
             aria-current={activeTabId === t.id ? 'page' : undefined}
           >
             {t.label}

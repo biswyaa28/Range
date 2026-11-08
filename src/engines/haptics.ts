@@ -10,46 +10,6 @@ export interface HapticsConfig {
   sound: boolean;
 }
 
-const PATTERNS: Record<HapticsKind, number[]> = {
-  tap: [8],
-  select: [12],
-  success: [10, 40, 10],
-  warning: [20, 50],
-  error: [30, 40, 30, 40, 30],
-  impact: [14],
-};
-
-const LEVELS: Record<HapticsLevel, number> = {
-  light: 0.55,
-  medium: 1,
-  strong: 1.6,
-};
-
-function canBuzz(): boolean {
-  try {
-    return (
-      typeof navigator === 'object' &&
-      navigator !== null &&
-      typeof navigator.vibrate === 'function' &&
-      ((navigator.maxTouchPoints || 0) > 0 ||
-        /Android|iPhone|iPad|Mobi/i.test(navigator.userAgent || ''))
-    );
-  } catch {
-    return false;
-  }
-}
-
-function vibrate(pattern: number[], mult: number): boolean {
-  try {
-    if (!canBuzz()) return false;
-    return !!navigator.vibrate(
-      pattern.map((ms) => Math.max(1, Math.round(ms * mult))),
-    );
-  } catch {
-    return false;
-  }
-}
-
 let audioCtx: AudioContext | null = null;
 
 function softClick(): void {
@@ -128,8 +88,6 @@ class HapticsEngine implements HapticsAdapter {
       const cfg = this.config();
       if (!cfg.on) return;
 
-      const pattern = PATTERNS[kind] ?? PATTERNS.tap;
-      const mult = LEVELS[cfg.level] ?? 1;
       let delivered = false;
 
       const targetAdapter = this.customAdapter ?? platformHaptics;
@@ -142,9 +100,6 @@ class HapticsEngine implements HapticsAdapter {
         }
       }
 
-      if (!delivered) {
-        delivered = vibrate(pattern, mult);
-      }
       if (!delivered && el) {
         visualPulse(el);
       }
