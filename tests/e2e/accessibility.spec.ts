@@ -21,7 +21,7 @@ for (const viewport of viewports) {
           await page.getByRole('radio', { name: theme === 'dark' ? 'Dark' : 'Light' }).click();
           await page.goto(`/#${route}`);
           await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-          await page.waitForTimeout(600);
+          await page.waitForTimeout(1000);
 
           const results = await new AxeBuilder({ page }).analyze();
           const serious = results.violations.filter((violation) =>
