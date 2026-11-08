@@ -1,19 +1,33 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useHashRoute, useMediaQuery, useShortcuts } from '@/hooks';
 import { useStore } from '@/store';
 import { resolveAccent } from '@/domain/color';
 import { ToastProvider } from '@/ui/Toast';
 import { TopNav, BottomTabBar, Breadcrumb } from '@/features/shell';
 
-import { HomeView } from '@/features/home/HomeView';
-import { PlanView } from '@/features/plan/PlanView';
-import { TasksView } from '@/features/tasks/TasksView';
-import { NotesView } from '@/features/notes/NotesView';
-import { FocusView } from '@/features/focus/FocusView';
+const HomeView = React.lazy(() =>
+  import('@/features/home/HomeView').then((module) => ({ default: module.HomeView })),
+);
+const PlanView = React.lazy(() =>
+  import('@/features/plan/PlanView').then((module) => ({ default: module.PlanView })),
+);
+const TasksView = React.lazy(() =>
+  import('@/features/tasks/TasksView').then((module) => ({ default: module.TasksView })),
+);
+const NotesView = React.lazy(() =>
+  import('@/features/notes/NotesView').then((module) => ({ default: module.NotesView })),
+);
+const FocusView = React.lazy(() =>
+  import('@/features/focus/FocusView').then((module) => ({ default: module.FocusView })),
+);
 import { FocusMode } from '@/features/focus/FocusMode';
 import { useFocusRuntime } from '@/features/focus/useFocusRuntime';
-import { InsightsView } from '@/features/insights/InsightsView';
-import { SettingsView } from '@/features/settings/SettingsView';
+const InsightsView = React.lazy(() =>
+  import('@/features/insights/InsightsView').then((module) => ({ default: module.InsightsView })),
+);
+const SettingsView = React.lazy(() =>
+  import('@/features/settings/SettingsView').then((module) => ({ default: module.SettingsView })),
+);
 import { Palette } from '@/features/palette/Palette';
 import { openPalette } from '@/features/palette/paletteBus';
 import { CheatSheet } from '@/features/shortcuts/CheatSheet';
@@ -150,7 +164,9 @@ const AppShell: React.FC = () => {
       </header>
 
       <main className="view" id="view">
-        {renderCurrentView()}
+        <Suspense fallback={<div className="view-loading" role="status">Loading view…</div>}>
+          {renderCurrentView()}
+        </Suspense>
       </main>
 
       <div id="scrollline" aria-hidden="true" />
