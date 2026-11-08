@@ -120,21 +120,21 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
   const newBlock = useCallback(
     (immediate = false) => {
       onNavigate('plan');
-      window.setTimeout(() => customEvent('personalos:new-block', immediate ? 'now' : ''), 90);
+      window.setTimeout(() => customEvent('personalos:new-block', immediate ? 'now' : ''), 300);
     },
     [onNavigate],
   );
 
   const newNote = useCallback(() => {
     onNavigate('notes');
-    window.setTimeout(() => customEvent('personalos:new-note'), 90);
+    window.setTimeout(() => customEvent('personalos:new-note'), 300);
   }, [onNavigate]);
 
   const customizeHome = useCallback(() => {
     const currentlyHome = window.location.hash === '#home' || window.location.hash === '';
     if (!currentlyHome) {
       onNavigate('home');
-      window.setTimeout(() => customEvent('personalos:customize-home'), 120);
+      window.setTimeout(() => customEvent('personalos:customize-home'), 300);
     } else {
       customEvent('personalos:customize-home');
     }
@@ -326,7 +326,7 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
         icon: 'todo',
         run: () => {
           onNavigate('tasks');
-          window.setTimeout(() => customEvent('personalos:edit-task', task.id), 90);
+          window.setTimeout(() => customEvent('personalos:edit-task', task.id), 300);
         },
       });
     }
@@ -340,7 +340,7 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
         icon: 'note',
         run: () => {
           onNavigate('notes');
-          window.setTimeout(() => customEvent('personalos:open-note', note.id), 90);
+          window.setTimeout(() => customEvent('personalos:open-note', note.id), 300);
         },
       });
     }
@@ -357,7 +357,7 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
         icon: 'grid',
         run: () => {
           onNavigate('plan');
-          window.setTimeout(() => customEvent('personalos:edit-block', block.id), 90);
+          window.setTimeout(() => customEvent('personalos:edit-block', block.id), 300);
         },
       });
     }
