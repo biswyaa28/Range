@@ -59,6 +59,16 @@ const AppShell: React.FC = () => {
       scrollRaf = requestAnimationFrame(() => {
         scrollRaf = 0;
         const y = window.scrollY || document.documentElement.scrollTop || 0;
+        const scrollLine = document.getElementById('scrollline');
+        const scrollMax = Math.max(
+          0,
+          document.documentElement.scrollHeight - window.innerHeight,
+        );
+        if (scrollLine) {
+          const progress = scrollMax > 0 ? Math.min(1, Math.max(0, y / scrollMax)) : 0;
+          scrollLine.classList.toggle('on', progress > 0);
+          scrollLine.style.transform = `scaleX(${progress})`;
+        }
 
         document.body.classList.toggle('scrolled', y > 56);
         const v = document.getElementById('view');
@@ -77,6 +87,7 @@ const AppShell: React.FC = () => {
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
     return () => {
       window.removeEventListener('scroll', onScroll);
       if (scrollRaf) cancelAnimationFrame(scrollRaf);
