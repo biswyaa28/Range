@@ -124,7 +124,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         type="button"
         className="brand"
         onClick={() => onNavigate('home')}
-        aria-label="Home"
+        aria-label="Home Personal OS"
       >
         <svg className="logo-mark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
           <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -169,7 +169,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           type="button"
           className="sbtn"
           onClick={onOpenSearch}
-          aria-label="Search"
+          aria-label="Search, Ctrl/Cmd K"
         >
           <span className="sic">
             <Icon name="search" />

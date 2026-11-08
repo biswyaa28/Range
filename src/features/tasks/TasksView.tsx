@@ -561,7 +561,7 @@ export const TasksView: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="empty">
+          <div className="empty" role="listitem">
             <h3>No tasks here</h3>
             <p className="hint">
               {filter === 'all'

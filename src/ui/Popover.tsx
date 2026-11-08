@@ -19,10 +19,14 @@ export const Popover: React.FC<PopoverProps> = ({
   'aria-label': ariaLabel,
 }) => {
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   useLayoutEffect(() => {
     if (!open || !anchorEl) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
 
     const updatePosition = () => {
       const margin = 8;
@@ -75,13 +79,13 @@ export const Popover: React.FC<PopoverProps> = ({
         !popoverRef.current.contains(e.target as Node) &&
         !anchorEl.contains(e.target as Node)
       ) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -93,8 +97,11 @@ export const Popover: React.FC<PopoverProps> = ({
       window.removeEventListener('scroll', updatePosition, true);
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      if (openerRef.current?.isConnected) {
+        openerRef.current.focus({ preventScroll: true });
+      }
     };
-  }, [open, anchorEl, onClose]);
+  }, [open, anchorEl]);
 
   if (!open) return null;
 

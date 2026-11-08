@@ -572,7 +572,13 @@ export const CalendarView: React.FC = () => {
             </i>
           ))}
         </div>
-        <div className="cal-cols" ref={colsRef}>
+        <div
+          className="cal-cols"
+          ref={colsRef}
+          tabIndex={0}
+          role="region"
+          aria-label="Calendar days"
+        >
           {dates.map((iso) => {
             const items = calItemsForDate(blocks, iso, grid);
             const layout = calLayout(items);
