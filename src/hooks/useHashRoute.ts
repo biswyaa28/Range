@@ -116,26 +116,6 @@ export function useHashRoute() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  // Keyboard 1-9 shortcuts
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
-        return;
-      }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key in KEY_ROUTE_MAP) {
-        const targetRoute = KEY_ROUTE_MAP[e.key];
-        if (targetRoute) {
-          e.preventDefault();
-          navigate(targetRoute);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [navigate]);
-
   return { route, navigate };
 }
 

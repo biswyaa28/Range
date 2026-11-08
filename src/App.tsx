@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useHashRoute, useMediaQuery } from '@/hooks';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useHashRoute, useMediaQuery, useShortcuts } from '@/hooks';
 import { useStore } from '@/store';
 import { resolveAccent } from '@/domain/color';
 import { ToastProvider } from '@/ui/Toast';
@@ -10,13 +10,19 @@ import { PlanView } from '@/features/plan/PlanView';
 import { TasksView } from '@/features/tasks/TasksView';
 import { NotesView } from '@/features/notes/NotesView';
 import { FocusView } from '@/features/focus/FocusView';
+import { FocusMode } from '@/features/focus/FocusMode';
+import { useFocusRuntime } from '@/features/focus/useFocusRuntime';
 import { InsightsView } from '@/features/insights/InsightsView';
 import { SettingsView } from '@/features/settings/SettingsView';
+import { Palette } from '@/features/palette/Palette';
+import { openPalette } from '@/features/palette/paletteBus';
+import { CheatSheet } from '@/features/shortcuts/CheatSheet';
 
-export const App: React.FC = () => {
+const AppShell: React.FC = () => {
   const { route, navigate } = useHashRoute();
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
+  const [cheatOpen, setCheatOpen] = useState(false);
 
   const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
@@ -74,6 +80,15 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  const openCheatSheet = useCallback(() => setCheatOpen(true), []);
+
+  useFocusRuntime();
+  const { chordHint } = useShortcuts({
+    route,
+    navigate,
+    openCheatSheet,
+  });
+
   const renderCurrentView = () => {
     switch (route) {
       case 'home':
@@ -102,13 +117,13 @@ export const App: React.FC = () => {
   };
 
   return (
-    <ToastProvider>
+    <>
       <header className="topwrap">
         <TopNav
           currentRoute={route}
           onNavigate={navigate}
-          onOpenSearch={() => {}}
-          onOpenShortcuts={() => {}}
+          onOpenSearch={openPalette}
+          onOpenShortcuts={openCheatSheet}
         />
         <Breadcrumb route={route} />
       </header>
@@ -119,6 +134,18 @@ export const App: React.FC = () => {
 
       <div id="scrollline" aria-hidden="true" />
       <BottomTabBar currentRoute={route} onNavigate={navigate} />
-    </ToastProvider>
+      <Palette onNavigate={navigate} onOpenShortcuts={openCheatSheet} />
+      <FocusMode />
+      <CheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
+      <span className={`cchip${chordHint ? ' show' : ''}`} aria-hidden={!chordHint}>
+        {chordHint ?? ''}
+      </span>
+    </>
   );
 };
+
+export const App: React.FC = () => (
+  <ToastProvider>
+    <AppShell />
+  </ToastProvider>
+);

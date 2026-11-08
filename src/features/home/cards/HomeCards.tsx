@@ -4,14 +4,15 @@ import { diffDays, fmtMS, fmtShort, hmToMin, todayISO } from '@/domain/dates';
 import { blockDoneOn, toggleBlockDoneOnDate } from '@/domain/recurrence';
 import { formatCountdown, plural } from '@/domain/homeGreeting';
 import { blockCategoryMeta } from '@/features/plan/blockCategories';
-import { store, stampNewRecord, touchRecord, useStore } from '@/store';
+import { store, stampNewRecord, touchRecord } from '@/store';
 import { Icon, type IconName } from '@/ui/Icon';
 import { ProgressRing } from '@/ui/ProgressRing';
 import { Sparkline } from '@/ui/Sparkline';
 import { Haptics } from '@/engines/haptics';
 import { useHome } from '../HomeContext';
 import { isInFocusWindow, isInWakingHours } from '../homeData';
-import { useFocusStub } from '../useFocusStub';
+import { usePomodoro } from '@/hooks';
+import { openFocusMode } from '@/features/focus/focusModeBus';
 
 interface CardProps {
   size: BentoCardSize;
@@ -172,10 +173,8 @@ export const WeeklyCard: React.FC<CardProps> = () => {
 };
 
 export const FocusCard: React.FC<CardProps> = ({ size }) => {
-  const { data, actions } = useHome();
-  const workMinutes = useStore((s) => s.settings.pomodoro.work);
-  const breakMinutes = useStore((s) => s.settings.pomodoro.break);
-  const focus = useFocusStub(workMinutes, breakMinutes);
+  const { data } = useHome();
+  const focus = usePomodoro();
 
   const button = (
     <button type="button" className="pbtn" id="hf-btn" onClick={focus.toggle}>
@@ -219,7 +218,7 @@ export const FocusCard: React.FC<CardProps> = ({ size }) => {
           {plural(data.sessions, 'session')} today
         </div>
         {size === 'L' && (
-          <button type="button" className="fmlink" onClick={() => actions.navigate('focus')}>
+          <button type="button" className="fmlink" onClick={openFocusMode}>
             <Icon name="bolt" />
             Enter focus mode
           </button>

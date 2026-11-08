@@ -97,6 +97,7 @@ export interface Profile {
   accent: string;
   customAccent: string;
   haptics: HapticsConfig;
+  recentCmds: string[];
   updatedAt: string;
 }
 
@@ -176,6 +177,7 @@ export function defaultState(): AppState {
       accent: 'mono',
       customAccent: '',
       haptics: { on: true, level: 'medium', sound: false },
+      recentCmds: [],
       updatedAt: EPOCH_TS,
     },
     layout: {

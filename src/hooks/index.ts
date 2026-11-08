@@ -4,3 +4,6 @@ export * from './useHaptics';
 export * from './useScrollReveal';
 export * from './useHashRoute';
 export * from './useSwipe';
+export * from './usePomodoro';
+export * from './useNoise';
+export * from './useShortcuts';

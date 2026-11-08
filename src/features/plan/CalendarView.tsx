@@ -334,6 +334,23 @@ export const CalendarView: React.FC = () => {
     setModal({ block: null, defaultDay: mode === 'month' ? todayISO() : anchor });
   }, [mode, anchor]);
 
+  // Palette create/open results and keyboard chord actions.
+  useEffect(() => {
+    const onEditBlock = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (!id) return;
+      const block = store.get().blocks.find((item) => item.id === id && !item.deleted);
+      if (block) openEditor(block);
+    };
+    const onNewBlock = () => openNewBlock();
+    window.addEventListener('personalos:edit-block', onEditBlock);
+    window.addEventListener('personalos:new-block', onNewBlock);
+    return () => {
+      window.removeEventListener('personalos:edit-block', onEditBlock);
+      window.removeEventListener('personalos:new-block', onNewBlock);
+    };
+  }, [openEditor, openNewBlock]);
+
   const toggleDone = useCallback(
     (block: Block, iso: string) => {
       const wasDone = blockDoneOn(block, iso);

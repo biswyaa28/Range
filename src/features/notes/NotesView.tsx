@@ -211,6 +211,28 @@ export const NotesView: React.FC = () => {
     }, 50);
   };
 
+  // Palette results / create chord land here after navigation.
+  useEffect(() => {
+    const openNote = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (!id) return;
+      setNotesSel(id);
+      setNotesEditing(true);
+    };
+    const newNote = () => {
+      const newId = createNote();
+      setNotesSel(newId);
+      setNotesEditing(true);
+      setTimeout(() => titleInputRef.current?.focus(), 50);
+    };
+    window.addEventListener('personalos:open-note', openNote);
+    window.addEventListener('personalos:new-note', newNote);
+    return () => {
+      window.removeEventListener('personalos:open-note', openNote);
+      window.removeEventListener('personalos:new-note', newNote);
+    };
+  }, []);
+
   const handleTogglePin = (id: string) => {
     flushDraft();
     store.set((state) => {

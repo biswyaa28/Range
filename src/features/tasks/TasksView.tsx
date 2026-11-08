@@ -189,6 +189,18 @@ export const TasksView: React.FC = () => {
 
   // Edit / Delete Modal state
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // Command-palette result: open the matching task editor after navigation.
+  useEffect(() => {
+    const onEditTask = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (!id) return;
+      const task = store.get().tasks.find((item) => item.id === id && !item.deleted);
+      if (task) setEditingTask({ ...task });
+    };
+    window.addEventListener('personalos:edit-task', onEditTask);
+    return () => window.removeEventListener('personalos:edit-task', onEditTask);
+  }, []);
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
 
   // Scrollline progress handler

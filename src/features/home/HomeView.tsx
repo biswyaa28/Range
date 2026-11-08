@@ -190,6 +190,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   }, [editing]);
 
   useEffect(() => {
+    const onCustomize = () => setEditing((value) => !value);
+    window.addEventListener('personalos:customize-home', onCustomize);
+    return () => window.removeEventListener('personalos:customize-home', onCustomize);
+  }, []);
+
+  useEffect(() => {
     return () => {
       pendingRef.current?.cleanup();
     };
