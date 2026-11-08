@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 async function loadDemo(page: Page) {
   await page.goto('/#settings');
@@ -39,6 +40,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Focus mode and command palette desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 900 } });
 
   test('F opens focus mode, the timer survives Esc and runs on the Focus tab', async ({
@@ -176,6 +181,10 @@ test.describe('Focus mode and command palette desktop', () => {
 });
 
 test.describe('Focus mode and palette mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('touch targets, overlay exit and palette stay inside the viewport', async ({
@@ -208,7 +217,7 @@ test.describe('Focus mode and palette mobile (390px)', () => {
     await expect(page.locator('.pal')).toBeVisible();
     await noOverflow(page);
     await page.fill('#pal-q', 'plan');
-    await page.keyboard.press('Enter');
+    await page.locator('#pal-list .pal-row:has-text("Plan")').first().click();
     await expect(page).toHaveURL(/#plan/);
     await noOverflow(page);
 

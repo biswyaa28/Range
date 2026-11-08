@@ -1,0 +1,112 @@
+.insights-view {
+  padding-bottom: 24px;
+}
+
+.insights-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.insights-toolbar-note {
+  margin: 0;
+}
+
+.insight-streak-spark {
+  width: 100%;
+  max-width: 150px;
+  height: 32px;
+  margin-top: 8px;
+}
+
+.insights-empty {
+  margin-bottom: 18px;
+  border-style: dashed;
+}
+
+.insights-empty-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.insights-chart-card {
+  margin-bottom: 18px;
+}
+
+.insights-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.insights-chart-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.insight-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.insights-health {
+  margin-top: 24px;
+}
+
+.insights-health-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.insights-health-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.insights-health-head .hint {
+  max-width: 560px;
+  margin: 0;
+}
+
+.insights-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.insights-health-card {
+  border-style: dashed;
+}
+
+.insight-health-spark {
+  width: 100%;
+  height: 44px;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .insights-chart-head {
+    align-items: flex-start;
+  }
+
+  .insights-health-head {
+    flex-direction: column;
+  }
+}

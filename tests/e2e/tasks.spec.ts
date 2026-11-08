@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 test.describe('Tasks View Desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('add task, quick-add, complete, soft-delete, undo, filters, and persistence', async ({ page }) => {
@@ -87,6 +92,10 @@ test.describe('Tasks View Desktop', () => {
 });
 
 test.describe('Tasks View Mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile swipe gestures, quick add, and no horizontal overflow', async ({ page }) => {

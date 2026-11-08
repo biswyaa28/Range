@@ -5,6 +5,8 @@ import { Kbd } from '@/ui/Kbd';
 import type { AppRoute } from '@/hooks';
 import { useStore, store } from '@/store';
 import { fileSaver } from '@/platform';
+import { exportFilename } from '@/domain/backup';
+import { todayISO } from '@/domain/dates';
 import type { AppState } from '@/domain/types';
 import { selectDeadlines, approveDeadline, dismissDeadline } from '@/features/deadlines/deadlinesActions';
 import { CRUMB_MAP } from './Breadcrumb';
@@ -100,9 +102,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   const handleExportData = () => {
     const data = store.exportAll();
     const json = JSON.stringify(data, null, 2);
-    const dateStr = new Date().toISOString().slice(0, 10);
     const blob = new Blob([json], { type: 'application/json' });
-    fileSaver.saveFile(blob, `personal-os-backup-${dateStr}.json`);
+    fileSaver.saveFile(blob, exportFilename(todayISO()));
     setAvatarOpen(false);
   };
 

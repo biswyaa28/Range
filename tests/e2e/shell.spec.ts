@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 test.describe('App Shell Desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('desktop navigation, theme toggle, accent switch, keys 1-9', async ({ page }) => {
@@ -63,6 +68,10 @@ test.describe('App Shell Desktop', () => {
 });
 
 test.describe('App Shell Mobile', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile bottom tab bar works and no horizontal overflow', async ({ page }) => {

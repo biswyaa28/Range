@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 async function loadDemo(page: Page) {
   await page.goto('/#settings');
@@ -24,6 +25,10 @@ async function noOverflow(page: Page) {
 }
 
 test.describe('Home View Desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 900 } });
 
   test('greeting, search, drag, resize, hide, preset and persistence', async ({ page }) => {
@@ -152,6 +157,10 @@ test.describe('Home View Desktop', () => {
 });
 
 test.describe('Home View Mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('no resize handles, buttons reorder/resize, hide, preset, search', async ({ page }) => {

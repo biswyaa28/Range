@@ -1,0 +1,38 @@
+.onb .onb-box {
+  overscroll-behavior: contain;
+}
+
+.onb .onb-step {
+  min-height: 0;
+}
+
+.onb .swatches {
+  margin-top: 4px;
+}
+
+@media (max-width: 520px) {
+  .onb {
+    padding: 10px;
+  }
+
+  .onb .onb-box {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .onb .onb-top {
+    gap: 10px;
+  }
+
+  .onb .onb-count {
+    font-size: 11px;
+  }
+
+  .onb .two {
+    grid-template-columns: 1fr;
+  }
+
+  .onb .onb-nav {
+    flex-wrap: wrap;
+  }
+}

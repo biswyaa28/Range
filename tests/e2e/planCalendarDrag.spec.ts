@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 interface CanvasMetrics {
   x: number;
@@ -44,6 +45,10 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.describe('Plan calendar drag desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('drag create, move to another day, resize, cancel, delete/undo, persistence', async ({
@@ -216,6 +221,10 @@ test.describe('Plan calendar drag desktop', () => {
 });
 
 test.describe('Plan calendar drag mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
   test('long-press create, resize, keyboard day move, delete/undo, persistence', async ({

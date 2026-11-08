@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 test.describe('Notes and Deadlines Views Desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('Notes: create, edit, pin, search, delete+undo, and persistence', async ({ page }) => {
@@ -154,6 +159,10 @@ test.describe('Notes and Deadlines Views Desktop', () => {
 });
 
 test.describe('Notes and Deadlines Views Mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('Notes mobile: list then full-screen editor with back, create/edit, no overflow', async ({ page }) => {
@@ -194,6 +203,7 @@ test.describe('Notes and Deadlines Views Mobile (390px)', () => {
     // Now list is visible, editor is hidden
     await expect(page.locator('.notes-list')).toBeVisible();
     await expect(page.locator('.note-item:has-text("Mobile Quick Note")')).toBeVisible();
+    await page.waitForTimeout(250);
 
     // No horizontal overflow
     hasHorizontalOverflow = await page.evaluate(() => {

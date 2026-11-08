@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedOnboarded } from './support';
 
 function localISO(date = new Date()): string {
   return (
@@ -26,6 +27,10 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 }
 
 test.describe('Plan calendar desktop', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('views, create, done, edit, delete+undo, month day, import, persistence', async ({
@@ -172,6 +177,10 @@ test.describe('Plan calendar desktop', () => {
 });
 
 test.describe('Plan calendar mobile (390px)', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('pager, create, mark done, views, month day, and persistence', async ({ page }) => {

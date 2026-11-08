@@ -17,12 +17,15 @@ import { SettingsView } from '@/features/settings/SettingsView';
 import { Palette } from '@/features/palette/Palette';
 import { openPalette } from '@/features/palette/paletteBus';
 import { CheatSheet } from '@/features/shortcuts/CheatSheet';
+import { Onboarding } from '@/features/onboarding/Onboarding';
 
 const AppShell: React.FC = () => {
   const { route, navigate } = useHashRoute();
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
   const [cheatOpen, setCheatOpen] = useState(false);
+  // First run only: a later data wipe stays on the current screen until reload.
+  const [onboardingOpen, setOnboardingOpen] = useState(() => !profile.onboarded);
 
   const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 
@@ -81,6 +84,8 @@ const AppShell: React.FC = () => {
   }, []);
 
   const openCheatSheet = useCallback(() => setCheatOpen(true), []);
+  const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
+  const closeOnboarding = useCallback(() => setOnboardingOpen(false), []);
 
   useFocusRuntime();
   const { chordHint } = useShortcuts({
@@ -108,9 +113,14 @@ const AppShell: React.FC = () => {
         return <FocusView />;
       case 'insights':
       case 'stats':
-        return <InsightsView />;
+        return <InsightsView onNavigate={navigate} />;
       case 'settings':
-        return <SettingsView />;
+        return (
+          <SettingsView
+            onOpenOnboarding={openOnboarding}
+            onOpenShortcuts={openCheatSheet}
+          />
+        );
       default:
         return <HomeView onNavigate={navigate} />;
     }
@@ -136,6 +146,7 @@ const AppShell: React.FC = () => {
       <BottomTabBar currentRoute={route} onNavigate={navigate} />
       <Palette onNavigate={navigate} onOpenShortcuts={openCheatSheet} />
       <FocusMode />
+      <Onboarding open={onboardingOpen} onClose={closeOnboarding} />
       <CheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
       <span className={`cchip${chordHint ? ' show' : ''}`} aria-hidden={!chordHint}>
         {chordHint ?? ''}

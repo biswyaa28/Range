@@ -1,0 +1,103 @@
+.settings-view {
+  padding-bottom: 24px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.settings-card {
+  gap: 14px;
+}
+
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-card-head h2 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.set-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.set-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--text-2);
+  box-shadow: 0 0 0 3.5px var(--surface-2);
+}
+
+.set-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.set-preview a {
+  font-weight: 600;
+}
+
+.set-preview-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-data-actions {
+  gap: 10px;
+}
+
+.settings-clear-btn {
+  color: var(--red-t, #c0392b);
+}
+
+.settings-data-hint {
+  margin: 0;
+}
+
+.settings-about {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .settings-data-actions .btn {
+    flex: 1;
+  }
+}
