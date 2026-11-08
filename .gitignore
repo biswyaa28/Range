@@ -25,7 +25,6 @@ GoogleService-Info.plist
 *service-account*.json
 
 # Mobile & Desktop native builds
-android/
 ios/
 src-tauri/target/
 
