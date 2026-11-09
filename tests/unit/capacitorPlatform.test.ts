@@ -7,7 +7,9 @@ const mockHaptics = {
 };
 
 const mockFilesystem = {
-  writeFile: vi.fn().mockResolvedValue({ uri: 'file:///cache/personal-os-2026-11-08.json' }),
+  writeFile: vi
+    .fn()
+    .mockResolvedValue({ uri: 'file:///cache/personal-os-2026-11-08.json' }),
 };
 
 const mockShare = {
@@ -106,9 +108,11 @@ describe('Capacitor platform layer', () => {
       const { PersonalStore } = await import('@/store');
 
       const mockStore = new PersonalStore({
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {},
+        storage: {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        },
       });
 
       const haptics = new CapacitorHaptics(mockStore);
