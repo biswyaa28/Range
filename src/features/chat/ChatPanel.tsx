@@ -304,6 +304,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
                       ? 'Checking your schedule…'
                       : 'Checking your stats…';
               setToolStatus(status);
+              await new Promise<void>((resolve) => setTimeout(resolve, 0));
               const result = executeReadTool(
                 call.name as 'search_notes' | 'get_note' | 'get_stats' | 'get_tasks' | 'get_timetable',
                 typeof call.args === 'object' && call.args !== null ? call.args as Record<string, unknown> : {},
