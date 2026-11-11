@@ -268,4 +268,38 @@ describe('GeminiProvider', () => {
       }, 'key'))).rejects.toMatchObject({ code: 'tool-limit' });
       expect(fetchMock).toHaveBeenCalledTimes(6);
     });
+
+    it('returns a proposed response for write tools without applying them', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(streamResponse(sse([{
+          candidates: [{ content: { parts: [{ functionCall: { name: 'set_theme', args: { theme: 'dark' } } }] } }],
+        }])))
+        .mockResolvedValueOnce(streamResponse(sse([{
+          candidates: [{ content: { parts: [{ text: 'I proposed dark mode for your approval.' }] } }],
+        }])));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(collect(provider.streamReply({
+        messages: [{ role: 'user', content: 'Make it dark' }],
+        tools: [{
+          name: 'set_theme',
+          description: 'Change the theme',
+          parameters: { type: 'object', properties: {} },
+        }],
+        onToolCall: (call) => ({
+          name: call.name,
+          response: { status: 'proposed', note: 'awaiting user approval' },
+        }),
+      }, 'key'))).resolves.toContain('proposed dark mode');
+
+      const secondBody = JSON.parse(String((fetchMock.mock.calls[1] as [string, RequestInit])[1].body)) as {
+        contents: Array<{ parts: Array<Record<string, unknown>> }>;
+      };
+      expect(secondBody.contents.at(-1)?.parts[0]).toEqual({
+        functionResponse: {
+          name: 'set_theme',
+          response: { status: 'proposed', note: 'awaiting user approval' },
+        },
+      });
+    });
 });
