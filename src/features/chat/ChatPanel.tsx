@@ -21,6 +21,7 @@ import { Haptics } from '@/engines/haptics';
 import {
   friendlyErrorMessage,
   isAbort,
+  LLMError,
   PROVIDER_META,
   providerFor,
   READ_TOOLS,
@@ -160,6 +161,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const [retryText, setRetryText] = useState('');
   const [showKeyPrompt, setShowKeyPrompt] = useState(false);
   const [proposals, setProposals] = useState<ActionProposal[]>([]);
@@ -262,6 +264,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
       }
 
       setError(null);
+      setLimitReached(false);
       setShowKeyPrompt(false);
       setRetryText('');
       setInput('');
@@ -353,6 +356,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
           chatStore.flush();
         } else {
           const message = friendlyErrorMessage(caught);
+          setLimitReached(caught instanceof LLMError && caught.code === 'rate-limit');
           chatStore.update(assistant.id, { status: 'error', error: message });
           chatStore.flush();
           setError(message);
@@ -530,6 +534,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
 
         {error ? (
           <div className="chat-error" role="alert">
+            {limitReached ? <strong>AI limit reached</strong> : null}
             <span>{error}</span>
             {retryText ? (
               <button
