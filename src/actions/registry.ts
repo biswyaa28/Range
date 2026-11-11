@@ -1008,7 +1008,7 @@ export function actionSystemPrompt(context: ActionContext): string {
 
   const notes = settings.ai.canReadNotes
     ? state.notes
-        .filter((note) => !note.deleted)
+        .filter((note) => !note.deleted && !note.private)
         .slice(0, 10)
         .map((note) => `- ${note.id}: ${note.title || 'Untitled'}`)
     : [];
