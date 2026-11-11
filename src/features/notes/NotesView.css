@@ -5,6 +5,20 @@
   margin-bottom: 8px;
 }
 
+.notes-grid,
+.notes-list,
+.notes-editor,
+.nl-search {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.nl-search .field {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .notes-item-wrap .note-item {
   margin-bottom: 0;
   user-select: none;

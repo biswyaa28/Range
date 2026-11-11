@@ -245,6 +245,18 @@ export const NotesView: React.FC = () => {
     Haptics.tap();
   };
 
+  const handleTogglePrivate = (id: string) => {
+    flushDraft();
+    store.set((state) => {
+      const note = state.notes.find((entry) => entry.id === id);
+      if (note) {
+        note.private = !note.private;
+        touchRecord(note);
+      }
+    });
+    Haptics.tap();
+  };
+
   const handleDeleteNote = (id: string) => {
     flushDraft();
     let deletedNote: Note | null = null;
@@ -370,6 +382,16 @@ export const NotesView: React.FC = () => {
                 onClick={() => handleTogglePin(sel.id)}
               >
                 <Icon name="pin" />
+              </button>
+              <button
+                type="button"
+                className={`ibtn${sel.private ? ' on' : ''}`}
+                data-action="note-private"
+                aria-pressed={!!sel.private}
+                aria-label={sel.private ? 'Make note visible to AI' : 'Make note private'}
+                onClick={() => handleTogglePrivate(sel.id)}
+              >
+                <Icon name={sel.private ? 'eyeoff' : 'eye'} />
               </button>
               <button
                 type="button"
