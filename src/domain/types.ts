@@ -47,6 +47,7 @@ export interface Note extends BaseRecord {
   title: string;
   body: string;
   pinned: boolean;
+  private?: boolean;
 }
 
 export type DeadlineType = 'assignment' | 'exam' | 'announcement';
