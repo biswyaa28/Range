@@ -44,7 +44,17 @@ test.describe('AI chat desktop', () => {
   });
 
   test('shows mocked theme and accent proposals, applies them, then undoes them', async ({ page }) => {
+    let round = 0;
     await page.route('**/v1beta/models/**', async (route) => {
+      round += 1;
+      if (round > 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: 'data: {"candidates":[{"content":{"parts":[{"text":"Done"}]}}]}\n\n',
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
@@ -73,6 +83,51 @@ test.describe('AI chat desktop', () => {
     await page.getByRole('button', { name: 'Undo' }).first().click();
     await page.getByRole('button', { name: 'Undo' }).first().click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  });
+
+  test('sends read-tool results back to Gemini for task analysis', async ({ page }) => {
+    await page.addInitScript(() => {
+      const key = 'personalOS_v1';
+      const data = JSON.parse(window.localStorage.getItem(key) ?? '{}') as Record<string, unknown>;
+      data.tasks = [{
+        id: 'e2e-task',
+        title: 'Revise algebra before Friday',
+        due: '2099-01-02',
+        priority: 'high',
+        done: false,
+        category: 'study',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deleted: false,
+        deviceId: 'e2e',
+      }];
+      window.localStorage.setItem(key, JSON.stringify(data));
+    });
+    let round = 0;
+    await page.route('**/v1beta/models/**', async (route) => {
+      round += 1;
+      if (round === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: 'data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"get_tasks","args":{"filter":"pending"}}}]}}]}\n\n',
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        body: 'data: {"candidates":[{"content":{"parts":[{"text":"You have one pending task: Revise algebra before Friday."}]}}]}\n\n',
+      });
+    });
+    await page.goto('/#settings');
+    await page.getByLabel('AI API key').fill('AIza-e2e-task-key-123456');
+    await page.click('[data-action="save-ai-key"]');
+    await page.click('[data-action="open-chat"]');
+    const input = page.getByLabel('Message AI');
+    await input.fill('What are my pending tasks this week?');
+    await page.getByRole('button', { name: 'Send message' }).click();
+    await expect(page.getByText('Revise algebra before Friday.')).toBeVisible();
   });
 });
 

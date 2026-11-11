@@ -169,6 +169,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
   const [notesReadThisTurn, setNotesReadThisTurn] = useState(false);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
 
   const panelRef = useRef<HTMLElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -290,24 +291,33 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
           signal: controller.signal,
           tools: [...ACTION_TOOLS, ...READ_TOOLS],
           onDelta: (delta) => chatStore.append(assistant.id, delta),
-          onToolCall: (call) => {
+          onToolCall: async (call) => {
             toolCallsRef.current.push(call);
-            if (
-              call.name === 'search_notes' ||
-              call.name === 'get_note'
-            ) {
+            const readToolNames = ['search_notes', 'get_note', 'get_stats', 'get_tasks', 'get_timetable'];
+            if (readToolNames.includes(call.name)) {
+              const status =
+                call.name === 'search_notes' || call.name === 'get_note'
+                  ? 'Reading your notes…'
+                  : call.name === 'get_tasks'
+                    ? 'Checking tasks…'
+                    : call.name === 'get_timetable'
+                      ? 'Checking your schedule…'
+                      : 'Checking your stats…';
+              setToolStatus(status);
               const result = executeReadTool(
-                call.name,
+                call.name as 'search_notes' | 'get_note' | 'get_stats' | 'get_tasks' | 'get_timetable',
                 typeof call.args === 'object' && call.args !== null ? call.args as Record<string, unknown> : {},
                 { state: store.get(), settings: settingsStore.get() },
               );
-              if (!result.accessDisabled) {
+              setToolStatus(null);
+              if (!result.accessDisabled && result.noteIds.length > 0) {
                 setSources((current) => [...new Set([...current, ...result.noteIds])]);
                 setNotesReadThisTurn(true);
                 notesReadRef.current = true;
-                chatStore.append(assistant.id, `\n\n${result.content}`);
               }
+              return { name: call.name, response: { status: result.accessDisabled ? 'access disabled' : 'ok', data: result.content } };
             }
+            return { name: call.name, response: { status: 'proposed', note: 'awaiting user approval' } };
           },
         });
 
@@ -329,11 +339,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
             for (const proposal of batch.proposals) delete next[proposal.id];
             return next;
           });
-          if (!reply?.content.trim()) {
-            chatStore.update(assistant.id, {
-              content: 'Review the proposed changes below.',
-            });
-          }
+          const currentContent = chatStore.get().messages.find((message) => message.id === assistant.id)?.content.trim();
+          chatStore.update(assistant.id, {
+            content: currentContent
+              ? `${currentContent}\n\nReview the proposed changes below.`
+              : 'Review the proposed changes below.',
+          });
           if (notesReadRef.current) {
             chatStore.update(assistant.id, {
               content: `${chatStore.get().messages.find((message) => message.id === assistant.id)?.content ?? ''}\n\nNote: this proposal is based on note data you allowed AI to read.`,
@@ -575,6 +586,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
                   Apply all low-risk changes
                 </button>
               ) : null}
+              {toolStatus ? <p className="chat-tool-status" role="status">{toolStatus}</p> : null}
               {proposals.map((proposal) => (
                 <ProposalCard
                   key={proposal.id}
