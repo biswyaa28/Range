@@ -143,6 +143,42 @@ export function fmtShort(iso: string): string {
   return fromISO(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+function plural(count: number, unit: string): string {
+  return `${count} ${unit}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * A short, human description of how long ago something happened, such as
+ * "5 minutes ago". Returns null when the timestamp cannot be read, so the
+ * caller can decide what to show instead.
+ */
+export function formatRelativeTime(
+  iso: string | null | undefined,
+  nowMs: number = Date.now(),
+): string | null {
+  if (!iso) return null;
+  const then = Date.parse(iso);
+  if (!Number.isFinite(then)) return null;
+
+  const diff = nowMs - then;
+  const ahead = diff < 0;
+  const abs = Math.abs(diff);
+
+  let label: string;
+  if (abs < MINUTE_MS) return 'just now';
+  if (abs < HOUR_MS) label = plural(Math.round(abs / MINUTE_MS), 'minute');
+  else if (abs < DAY_MS) label = plural(Math.round(abs / HOUR_MS), 'hour');
+  else if (abs < 30 * DAY_MS) label = plural(Math.round(abs / DAY_MS), 'day');
+  else if (abs < 365 * DAY_MS) label = plural(Math.round(abs / (30 * DAY_MS)), 'month');
+  else label = plural(Math.round(abs / (365 * DAY_MS)), 'year');
+
+  return ahead ? `in ${label}` : `${label} ago`;
+}
+
 export function fmtStamp(v: string | number | Date): string {
   const d = new Date(v);
   if (isNaN(d.getTime())) return '—';

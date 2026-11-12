@@ -29,7 +29,7 @@ import type {
 } from '@/domain/settings';
 import { DEFAULT_TIMETABLE_COLORS, isHexColor } from '@/domain/settings';
 import { ACCENTS, resolveAccent } from '@/domain/color';
-import { defaultClock, todayISO } from '@/domain/dates';
+import { defaultClock, formatRelativeTime, todayISO } from '@/domain/dates';
 import { buildDemoData } from '@/domain/demo';
 import { recomputeDayStats } from '@/domain/stats';
 import {
@@ -148,14 +148,9 @@ function sameWidgetOrder(a: readonly string[], b: readonly string[]): boolean {
 
 function formatSyncTime(iso: string | null): string {
   if (!iso) return 'Not synced yet';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'Not synced yet';
-  return `Last synced ${date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })}`;
+  const relative = formatRelativeTime(iso);
+  if (!relative) return 'Not synced yet';
+  return `Last synced ${relative}`;
 }
 
 function syncStatusText(state: SyncState): string {
