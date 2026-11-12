@@ -21,7 +21,9 @@ dist-ssr/
 *.key
 google-services.json
 GoogleService-Info.plist
-*firebase*.json
+# Firebase/native service credentials only: firebase.json and
+# firestore.indexes.json are project config and must stay tracked.
+*-firebase-adminsdk-*.json
 *service-account*.json
 
 # Mobile & Desktop native builds
@@ -32,4 +34,3 @@ src-tauri/target/
 test-results/
 playwright-report/
 blob-report/
-
