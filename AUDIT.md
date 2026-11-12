@@ -24,24 +24,36 @@ Med = real defect with a workaround; Low = hardening / polish.
 | SYNC-01 | Sync | Med | `src/store/merge.ts:72` | Equal `updatedAt` means the remote copy is always dropped — no `deviceId` tiebreak, so a same-millisecond edit is lost. | Deterministic tiebreak on `deviceId`; both devices converge. | Fixed |
 | SYNC-02 | Sync | High | `src/sync/engine.ts:419` | Signing into a different account re-uploads the previous account's whole dataset to the new account. | Do not auto-upload history on account switch; only new edits sync. | Fixed |
 | SYNC-03 | Sync | Med | `src/sync/engine.ts:19` | Every edit triggers a full pull of 4 collections after 2s; a burst of edits burns Spark read quota. | Debounce raised to 15s (manual/"sync now" unaffected). | Fixed |
-| SYNC-04 | Sync | Low | `src/sync/firebaseAdapter.ts:161` | Tombstones are pushed as records and never garbage-collected. | Acceptable: deletion needs tombstones to sync. | Won't fix |
+| SYNC-04 | Sync | Low | `src/sync/firebaseAdapter.ts:161` | Tombstones are pushed as records and never garbage-collected. | Superseded by S5 (TTL `expireAt` plus local GC). | Fixed |
 | BUG-01 | AI | High | `src/engines/llm/readTools.ts:97` | `get_stats` slices object insertion order, not dates, so it reports an arbitrary 7 days. | Sort day stats by date before slicing. | Fixed |
 | BUG-02 | AI | Med | `src/actions/registry.ts:950` | "Only the first 8 proposed actions…" is pushed once per call, up to 8 duplicates. | Emit once for the batch. | Fixed |
 | BUG-03 | Shell | High | `src/App.tsx:221` | No error boundary: a failed lazy chunk or render throw leaves a blank window with no recovery. | Add a route-level plus app-level boundary with reload. | Fixed |
 | BUG-04 | AI | — | `src/features/chat/ChatPanel.tsx:315` | Read-tool results were not sent back to Gemini as function responses. | Already implemented and covered by `tests/e2e/chat.spec.ts`. | Verified |
 | UX-01 | A11y | Low | `src/main.tsx:26` | No global `unhandledrejection` reporting; failures only surface per-call. | Out of scope for this pass. | Won't fix |
-| UX-02 | Test | Low | `firestore.rules` | Rules are not covered by an emulator suite; no `firebase-tools` in the project. | Add rules unit tests when the emulator is available. | Needs me |
+| UX-02 | Test | Low | `firestore.rules` | Rules are not covered by an emulator suite; no `firebase-tools` in the project. | Superseded by S6: `npm run test:rules` runs 27 emulator assertions and skips when the toolchain is missing. | Fixed |
+| S1 | Sync | High | `src/sync/firebaseAdapter.ts:193` | `push` writes all collection records and `state` docs into a single `writeBatch`, failing past Firestore's 500-op limit and abandoning the whole sync on any batch error. | `planPushBatches` splits the payload into ≤400-op chunks committed sequentially; `SyncEngine.pushWithProgress` records each committed chunk in a push ledger, so a retry skips what already landed and `syncedAt` only advances after the last chunk. | Fixed |
+| S2 | Sync | High | `src/sync/engine.ts:372` | `dayStats` grows forever in `state/app` and local storage, eventually exceeding Firestore's 500 KB rule limit and 1 MiB document cap. | `pruneDayStatsByAge` keeps 730 days locally and on merge; `buildStateAppPayload`/`capDayStats` cap the synced day map at 400 KB by dropping the oldest days and surface *Older stats were trimmed to keep sync working*. The map moved to its own `state/stats` document, written with a plain `set` so pruned days do not linger under a merge. | Fixed |
+| S3 | Sync | Med | `src/sync/firebaseAdapter.ts:167` | Every sync reads all four collections from scratch, burning Spark 50k/day read quota on repeat syncs. | Incremental pull with `where('updatedAt', '>', since)` and a 10-minute overlap, driven by `planPull` and a `SyncStateStore` cursor. Full pulls on first sign-in, account change, invalid cursor, schema change, >60 days offline, and once every 24 hours. | Fixed |
+| S4 | Sync | Med | `src/store/merge.ts:38` | Incoming records with a future `updatedAt` permanently pin LWW against normal clocks, and local stamping does not enforce monotonic progression per record. | `mergeRemote` clamps an incoming stamp more than 5 minutes ahead of the local clock to `now`, then applies the `deviceId` (or canonical-JSON for singletons/day stats) tiebreak; `nextStamp` keeps every local stamp strictly after the previous one. | Fixed |
+| S5 | Sync | Med | `src/sync/firebaseAdapter.ts:206` | Soft-deleted tombstones accumulate forever in Firestore and local storage with no TTL or offline-cursor safety window. | The adapter stamps `expireAt` (a Firestore `Timestamp`, `updatedAt + 90d`) on tombstones only, the rules accept it, and `gcExpiredTombstones` removes pushed tombstones older than 90 days locally. A stale-cursor full pull reconciles records the remote dropped via the push ledger, so nothing resurrects and no local edit is lost. TTL commands in `docs/OPS.md`. | Fixed |
+| S6 | Firestore | Med | `firestore.rules:16` | Security rules and client payload shapes are not locked together by automated emulator and unit tests. | Added `@firebase/rules-unit-testing` with `npm run test:rules` (27 emulator tests, skipped gracefully without Java ≥21/Firebase CLI) and `tests/unit/syncPayloadAllowlist.test.ts`, which keeps `STATE_APP_ALLOWED_KEYS` identical to the rules' `hasOnly` list inside `npm run check`. | Fixed |
+| S7 | UX | Low | `src/features/settings/SettingsView.tsx:149` | Settings sync status shows an absolute timestamp instead of relative time (`Last synced <relative time>`). | `formatRelativeTime` renders *Last synced 5 minutes ago* (and *Not synced yet*), the error status shows its message in `.settings-sync-error`, and the last sync notice has its own row. | Fixed |
+| SYNC-05 | Sync | Med | `src/store/merge.ts:142` | `dayStats` LWW merge copies raw remote fields onto existing entries without type-checking numbers, and equal-timestamp ties on singletons/dayStats lack a deterministic tiebreak. | `sanitizeDayStats` validates every numeric field on insert and update (and clamps the stamp); singletons and day stats break a tie on canonical JSON, so both devices converge. | Fixed |
+| FIX-01 | Firestore | Critical | `firestore.rules:21` | `request.resource.size` does not exist in the rules language (`Resource` exposes only `__name__`, `data`, `id`), so every record write was denied with *Property size is undefined on object*. Present in `HEAD`, found by the new S6 emulator suite. | Replaced the byte checks with key-count limits; the byte cap stays client-side (`STATE_APP_MAX_BYTES`) and is documented next to the rule. | Fixed |
+| FIX-02 | Sync | Med | `src/sync/engine.ts:118` | `sameState` did not compare `notice`, so a status update that only changed the notice was dropped and the S2 trim message never reached the UI. | Compare `notice` as part of the state identity; regression covered by `syncStatsCap.test.ts`. | Fixed |
+
 
 ## Verification
 
 | Check | Result |
 | --- | --- |
-| `npm run check` (typecheck, lint, vitest, build, motion CSS, 64 e2e) | pass |
+| `npm run check` (typecheck, lint, 68 vitest files / 497 tests, build, motion CSS, 64 e2e) | pass |
 | Android debug APK (`npx cap sync android && ./gradlew assembleDebug`) | pass — 8.0M `app-debug.apk`; manifest verified `allowBackup=false`, `usesCleartextTraffic=false` |
 | macOS Rust (`cargo check` in `src-tauri`) | pass |
 | macOS `tauri build` | blocked: no full Xcode on this machine (`xcode-select` → CommandLineTools) |
-| Firestore rules emulator load (firebase-tools 13.35.1, Java 17) | pass — rules compile and the emulator starts |
-| Firestore rules assertions | not automated: no `@firebase/rules-unit-testing` suite in the repo |
+| Firestore rules assertions (`npm run test:rules`, emulator, Java 26) | pass — 27/27; the command skips with a message when Java <21 or the Firebase CLI is missing |
+| Rules regression test of the pre-fix `request.resource.size` | reproduced in the emulator before the fix, denied every write; green after FIX-01 |
+| `npm run test:rules` isolation | own emulator config on ports 8180/4402, stays out of `npm run check` |
 
 ## Decisions
 
@@ -54,6 +66,24 @@ Med = real defect with a workaround; Low = hardening / polish.
 - Auto-sync debounce moved from 2s to 15s; "sync now" is unchanged.
 - The Firestore rules refuse hard deletes; the app only soft-deletes, so this
   does not change behaviour.
+- `state/app` keeps the singletons; the day map moved to `state/stats` and is
+  written with a plain `set`. `merge: true` merges nested maps key-by-key, so
+  days pruned by the cap would otherwise stay on the remote forever.
+- The pull cursor lives in `SyncStateStore`, not in `AppState.syncedAt`: one is
+  "what the remote has shown me", the other "what I have sent". A single
+  timestamp cannot express both after a partial or incremental sync.
+- The push ledger (collection/id → confirmed `updatedAt`) is what lets a retry
+  skip committed chunks and what lets a stale-cursor pull tombstone records the
+  remote has TTL-deleted. It is cleared on account switch.
+- On a full pull the remote is authoritative for records it still returns;
+  records it dropped are only tombstoned locally when they were confirmed
+  uploaded and not edited here since.
+- Firestore rules cannot measure a document's byte size (`Resource` has only
+  `__name__`, `data`, `id`), so size limits are key-count based in the rules and
+  byte-based in the client (`STATE_APP_MAX_BYTES`, 400 KB).
+- `@types/node` moved to `^22` because vitest 5.1 has a peer range that `^20`
+  does not satisfy; installing with `--legacy-peer-deps` had broken
+  `@testing-library/react`.
 
 ## Manual checklist
 
