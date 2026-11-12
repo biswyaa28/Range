@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
+    "test:rules": "node scripts/run-rules-tests.mjs",
     "e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-motion-css.mjs && npm run e2e"
   },
@@ -39,10 +40,11 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@capacitor/cli": "^8.6.0",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.49.1",
     "@tauri-apps/cli": "^2.12.4",
     "@testing-library/react": "^16.1.0",
-    "@types/node": "^20.17.10",
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
