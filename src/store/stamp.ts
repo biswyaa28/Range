@@ -25,8 +25,24 @@ export function createSingletonSnapshot(state: AppState): SingletonSnapshot {
   };
 }
 
+/**
+ * The next stamp for a record: the clock reading, but never earlier than the
+ * record's own previous stamp. Two edits inside the same millisecond, or a
+ * clock that steps backwards, would otherwise produce a timestamp that loses
+ * to the remote copy it was meant to replace.
+ */
+export function nextStamp(previous: string | undefined, clock: Clock = defaultClock): string {
+  const now = clock.nowISO();
+  if (!previous) return now;
+  const previousMs = Date.parse(previous);
+  const nowMs = Date.parse(now);
+  if (!Number.isFinite(previousMs)) return now;
+  if (!Number.isFinite(nowMs)) return previous;
+  return nowMs > previousMs ? now : new Date(previousMs + 1).toISOString();
+}
+
 export function touchRecord<T extends { updatedAt: string }>(record: T, clock: Clock = defaultClock): T {
-  record.updatedAt = clock.nowISO();
+  record.updatedAt = nextStamp(record.updatedAt, clock);
   return record;
 }
 
@@ -41,7 +57,7 @@ export function stampNewRecord<T extends Partial<BaseRecord>>(
     ...partial,
     id: partial.id || uuidFn(),
     createdAt: partial.createdAt || now,
-    updatedAt: now,
+    updatedAt: nextStamp(partial.updatedAt, clock),
     deleted: false,
     deviceId: partial.deviceId || deviceId,
   } as T & BaseRecord;
@@ -56,7 +72,7 @@ export function softDeleteRecord<T extends BaseRecord>(
   const r = coll.find((x) => x && x.id === id);
   if (r) {
     r.deleted = true;
-    r.updatedAt = clock.nowISO();
+    r.updatedAt = nextStamp(r.updatedAt, clock);
     return r;
   }
   return null;
@@ -68,7 +84,7 @@ export function softUndeleteRecord<T extends BaseRecord>(
 ): T | null {
   if (rec) {
     rec.deleted = false;
-    rec.updatedAt = clock.nowISO();
+    rec.updatedAt = nextStamp(rec.updatedAt, clock);
     return rec;
   }
   return null;
@@ -87,17 +103,16 @@ export function diffAndStampSingletons(
   previousSnapshot: SingletonSnapshot,
   clock: Clock = defaultClock,
 ): SingletonSnapshot {
-  const now = clock.nowISO();
   const currentSnap = createSingletonSnapshot(state);
 
   if (currentSnap.profile !== previousSnapshot.profile) {
-    state.profile.updatedAt = now;
+    state.profile.updatedAt = nextStamp(state.profile.updatedAt, clock);
   }
   if (currentSnap.layout !== previousSnapshot.layout) {
-    state.layout.updatedAt = now;
+    state.layout.updatedAt = nextStamp(state.layout.updatedAt, clock);
   }
   if (currentSnap.settings !== previousSnapshot.settings) {
-    state.settings.updatedAt = now;
+    state.settings.updatedAt = nextStamp(state.settings.updatedAt, clock);
   }
 
   const seenDays: Record<string, number> = {};
@@ -108,7 +123,7 @@ export function diffAndStampSingletons(
     if (currentSnap.days[k] !== previousSnapshot.days[k]) {
       const item = state.dayStats[k];
       if (item) {
-        item.updatedAt = now;
+        item.updatedAt = nextStamp(item.updatedAt, clock);
       }
     }
   }
@@ -116,4 +131,3 @@ export function diffAndStampSingletons(
   // Re-snapshot AFTER stamping timestamps
   return createSingletonSnapshot(state);
 }
-

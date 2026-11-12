@@ -92,7 +92,10 @@ describe('PersonalStore and persistence operations', () => {
 
   it('executes mergeRemote resolution ladder (newer wins, older ignored, tombstone vs edit, idempotent)', () => {
     const storage = new MemoryStorage();
-    const clock = new FixedClock('2026-04-13T10:00:00.000Z');
+    // The clock sits after every remote timestamp in this ladder: a remote
+    // stamp that runs ahead of the local clock is clamped, which is covered
+    // by its own test.
+    const clock = new FixedClock('2026-04-13T13:00:00.000Z');
     const store = new PersonalStore({ storage, clock, debounceMs: 0 });
 
     store.set((s) => {
