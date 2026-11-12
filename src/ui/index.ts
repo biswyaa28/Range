@@ -6,6 +6,7 @@ export * from './Segmented';
 export * from './Switch';
 export * from './Kbd';
 export * from './EmptyState';
+export * from './ErrorBoundary';
 export * from './Modal';
 export * from './Popover';
 export * from './Toast';

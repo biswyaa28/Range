@@ -1,9 +1,12 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
-import { useHashRoute, useMediaQuery, useShortcuts } from '@/hooks';
-import { useStore } from '@/store';
-import { resolveAccent } from '@/domain/color';
+import { useHashRoute, useShortcuts } from '@/hooks';
+import { applySettings, settingsStore, useSettings, useStore } from '@/store';
+import { ACCENTS } from '@/domain/color';
+import { isHexColor } from '@/domain/settings';
+import type { AccentColor, SettingsPatch } from '@/domain/settings';
 import { ToastProvider } from '@/ui/Toast';
-import { TopNav, BottomTabBar, Breadcrumb } from '@/features/shell';
+import { ErrorBoundary } from '@/ui/ErrorBoundary';
+import { TopNav, BottomTabBar, Breadcrumb, StorageNotice } from '@/features/shell';
 
 const HomeView = React.lazy(() =>
   import('@/features/home/HomeView').then((module) => ({ default: module.HomeView })),
@@ -30,37 +33,95 @@ const SettingsView = React.lazy(() =>
 );
 import { Palette } from '@/features/palette/Palette';
 import { openPalette } from '@/features/palette/paletteBus';
+import { ChatPanel } from '@/features/chat/ChatPanel';
+import { closeChat } from '@/features/chat/chatBus';
 import { CheatSheet } from '@/features/shortcuts/CheatSheet';
 import { Onboarding } from '@/features/onboarding/Onboarding';
+import { syncEngine } from '@/sync';
+import { chatStore } from '@/store/chatStore';
+
+function accentFromLegacy(
+  accent: string,
+  customAccent: string,
+): { accentColor: AccentColor; accentCustom?: string } {
+  if (isHexColor(accent)) {
+    return { accentColor: 'custom', accentCustom: accent.toLowerCase() };
+  }
+  if (accent === 'custom') {
+    return {
+      accentColor: 'custom',
+      ...(isHexColor(customAccent) ? { accentCustom: customAccent.toLowerCase() } : {}),
+    };
+  }
+  if (ACCENTS.some((entry) => entry.id === accent)) {
+    return {
+      accentColor: accent as AccentColor,
+      ...(isHexColor(customAccent) ? { accentCustom: customAccent.toLowerCase() } : {}),
+    };
+  }
+  return {
+    accentColor: 'mono',
+    ...(isHexColor(customAccent) ? { accentCustom: customAccent.toLowerCase() } : {}),
+  };
+}
 
 const AppShell: React.FC = () => {
-  const { route, navigate } = useHashRoute();
+  const { route, rawRoute, navigate } = useHashRoute();
   const profile = useStore((s) => s.profile);
-  const settings = useStore((s) => s.settings);
+  const legacyTheme = useStore((s) => s.settings.theme);
+  const legacyAccent = useStore((s) => s.profile.accent);
+  const legacyCustomAccent = useStore((s) => s.profile.customAccent);
+  const legacyHaptics = useStore((s) => s.profile.haptics.on);
+  const legacyName = useStore((s) => s.profile.name);
+  const appSettings = useSettings();
   const [cheatOpen, setCheatOpen] = useState(false);
   // First run only: a later data wipe stays on the current screen until reload.
   const [onboardingOpen, setOnboardingOpen] = useState(() => !profile.onboarded);
 
-  const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
-
-  // Determine actual theme (light vs dark)
-  const isDark =
-    settings.theme === 'dark' || (settings.theme === 'auto' && systemPrefersDark);
-
-  // Apply theme data attribute
+  // Auth listeners and online retries are owned by the sync engine.
   useEffect(() => {
-    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-  }, [isDark]);
+    syncEngine.start();
+    // A signed-out device must not keep an AI transcript that can quote notes.
+    let lastUid = syncEngine.getState().account?.uid ?? null;
+    const unsubscribe = syncEngine.subscribe((state) => {
+      const uid = state.account?.uid ?? null;
+      if (lastUid !== null && uid === null) chatStore.clear();
+      lastUid = uid;
+    });
+    return () => {
+      unsubscribe();
+      syncEngine.dispose();
+    };
+  }, []);
 
-  // Apply accent tokens
+  // The versioned settings store owns appearance, motion, density and tokens.
   useEffect(() => {
-    const applied = resolveAccent(profile.accent, profile.customAccent, isDark);
-    const rootStyle = document.documentElement.style;
-    rootStyle.setProperty('--accent', applied.accent);
-    rootStyle.setProperty('--accent-text', applied.accentText);
-    rootStyle.setProperty('--on-accent', applied.onAccent);
-    rootStyle.setProperty('--focus', applied.focus);
-  }, [profile.accent, profile.customAccent, isDark]);
+    applySettings(appSettings);
+  }, [appSettings]);
+
+  // Legacy surfaces (top-nav theme menu, onboarding, imports) still write the
+  // original groups. Mirror those writes into the settings store so there is a
+  // single source of truth for how the app looks.
+  useEffect(() => {
+    const current = settingsStore.get();
+    const theme = legacyTheme === 'auto' ? 'system' : legacyTheme;
+    const accent = accentFromLegacy(legacyAccent, legacyCustomAccent);
+    const patch: SettingsPatch = {};
+
+    if (current.theme !== theme) patch.theme = theme;
+    if (current.accentColor !== accent.accentColor) patch.accentColor = accent.accentColor;
+    if (accent.accentCustom && current.accentCustom !== accent.accentCustom) {
+      patch.accentCustom = accent.accentCustom;
+    }
+    if (current.haptics !== legacyHaptics) patch.haptics = legacyHaptics;
+
+    const name = legacyName.trim().slice(0, 40);
+    if (name && current.identity.name !== name) patch.identity = { name };
+
+    if (Object.keys(patch).length > 0) {
+      settingsStore.set(patch);
+    }
+  }, [legacyTheme, legacyAccent, legacyCustomAccent, legacyHaptics, legacyName]);
 
   // ScrollChrome: large title collapse, scrolled nav hide/reveal
   useEffect(() => {
@@ -111,6 +172,10 @@ const AppShell: React.FC = () => {
   const openCheatSheet = useCallback(() => setCheatOpen(true), []);
   const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
   const closeOnboarding = useCallback(() => setOnboardingOpen(false), []);
+  const openSettingsFromChat = useCallback(() => {
+    closeChat();
+    navigate('settings');
+  }, [navigate]);
 
   useFocusRuntime();
   const { chordHint } = useShortcuts({
@@ -160,18 +225,22 @@ const AppShell: React.FC = () => {
           onOpenSearch={openPalette}
           onOpenShortcuts={openCheatSheet}
         />
-        <Breadcrumb route={route} />
+        <Breadcrumb route={rawRoute} />
       </header>
 
       <main className="view" id="view">
-        <Suspense fallback={<div className="view-loading" role="status">Loading view…</div>}>
-          {renderCurrentView()}
-        </Suspense>
+        <StorageNotice />
+        <ErrorBoundary resetKey={route}>
+          <Suspense fallback={<div className="view-loading" role="status">Loading view…</div>}>
+            {renderCurrentView()}
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <div id="scrollline" aria-hidden="true" />
       <BottomTabBar currentRoute={route} onNavigate={navigate} />
       <Palette onNavigate={navigate} onOpenShortcuts={openCheatSheet} />
+      <ChatPanel onOpenSettings={openSettingsFromChat} />
       <FocusMode />
       <Onboarding open={onboardingOpen} onClose={closeOnboarding} />
       <CheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
