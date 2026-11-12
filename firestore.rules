@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Owner-only, collection-allowlisted, shape-checked writes. Deletes are
+    // refused because the app soft-deletes with tombstones (deleted: true).
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isRecordCollection(name) {
+      return name == 'blocks' || name == 'tasks' || name == 'notes' || name == 'deadlines';
+    }
+
+    // Records are plain JSON written with the record id as the document id.
+    function recordShape(docId) {
+      let d = request.resource.data;
+      return request.resource.size < 200 * 1024
+        && d.keys().size() <= 40
+        && (!('id' in d) || d.id == docId)
+        && (!('deleted' in d) || d.deleted is bool)
+        && (!('deviceId' in d) || d.deviceId is string)
+        && (!('updatedAt' in d) || d.updatedAt is string)
+        && (!('createdAt' in d) || d.createdAt is string);
+    }
+
+    // `state/app` holds the singletons; `state/preferences` must never carry a
+    // plaintext AI key (it lives in the platform secure store).
+    function stateShape(docId) {
+      let d = request.resource.data;
+      return request.resource.size < 500 * 1024
+        && (
+          (docId == 'app' && d.keys().hasOnly(['profile', 'layout', 'settings', 'dayStats']))
+          || (
+            docId == 'preferences'
+            && d.keys().size() <= 40
+            && (!('ai' in d) || !('apiKey' in d.ai))
+          )
+        );
+    }
+
+    match /users/{uid} {
+      // The user root document is unused; only subcollections are accessible.
+      allow read, write: if false;
+
+      match /state/{docId} {
+        allow read: if signedInAs(uid);
+        allow create, update: if signedInAs(uid) && stateShape(docId);
+        allow delete: if false;
+      }
+
+      match /{collection}/{docId} {
+        allow read: if signedInAs(uid) && isRecordCollection(collection);
+        allow create, update: if signedInAs(uid)
+          && isRecordCollection(collection)
+          && recordShape(docId);
+        allow delete: if false;
+      }
+    }
+  }
+}
