@@ -101,8 +101,23 @@ describe('action registry', () => {
     expect(batch.proposals).toHaveLength(0);
     expect(batch.rejected.join(' ')).toContain('Unknown action');
     expect(batch.rejected.join(' ')).toContain('Choose one of');
+    expect(batch.rejected.join(' ')).not.toContain('Only the first 8');
     expect(app.settings().theme).toBe('system');
     expect(app.state().tasks).toHaveLength(0);
+  });
+
+  it('reports the eight-call cap once per batch', () => {
+    const app = setup();
+    const calls = Array.from({ length: 10 }, () => ({
+      name: 'set_theme',
+      args: { theme: 'dark' },
+    }));
+
+    const batch = parseActionToolCalls(calls, app.context);
+    const capMessages = batch.rejected.filter((entry) => entry.includes('Only the first 8'));
+
+    expect(batch.proposals).toHaveLength(8);
+    expect(capMessages).toHaveLength(1);
   });
 
   it('builds a preview without applying anything', () => {

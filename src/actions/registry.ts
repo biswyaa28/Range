@@ -24,6 +24,7 @@ import {
   stampNewRecord,
   touchRecord,
 } from '@/store/stamp';
+import { stripDataFence } from '@/engines/llm/sanitize';
 import type { LLMTool, LLMToolCall, LLMToolProperty } from '@/engines/llm/types';
 import {
   SETTING_PATHS,
@@ -917,6 +918,10 @@ export function parseActionToolCalls(
   const proposals: ActionProposal[] = [];
   const rejected: string[] = [];
 
+  if (calls.length > 8) {
+    rejected.push('Only the first 8 proposed actions were considered.');
+  }
+
   for (const call of calls.slice(0, 8)) {
     const definition = ACTIONS.get(call.name as ActionName);
     if (!definition) {
@@ -944,10 +949,6 @@ export function parseActionToolCalls(
       });
     } catch (error) {
       rejected.push(errorText(error));
-    }
-
-    if (calls.length > 8) {
-      rejected.push('Only the first 8 proposed actions were considered.');
     }
   }
 
@@ -986,12 +987,14 @@ export function actionSystemPrompt(context: ActionContext): string {
   const widgets = widgetState(settings);
   const hidden = widgets.order.filter((id) => widgets.visible[id] === false);
 
+  // Titles come from user/synced data, so they are sanitized before they land
+  // in the system prompt next to the real instructions.
   const openTasks = state.tasks
     .filter((task) => !task.deleted)
     .slice(0, 20)
     .map(
       (task) =>
-        `- ${task.id}: ${task.title}${task.due ? ` (due ${task.due})` : ''} · ${
+        `- ${task.id}: ${stripDataFence(task.title)}${task.due ? ` (due ${task.due})` : ''} · ${
           task.done ? 'done' : 'open'
         } · ${task.priority}`,
     );
@@ -1001,7 +1004,7 @@ export function actionSystemPrompt(context: ActionContext): string {
     .slice(0, 24)
     .map(
       (block) =>
-        `- ${block.id}: ${block.title} · ${dayLabel(block.day)} ${block.start}–${block.end} · ${
+        `- ${block.id}: ${stripDataFence(block.title)} · ${dayLabel(block.day)} ${block.start}–${block.end} · ${
           block.category
         }`,
     );
@@ -1010,7 +1013,7 @@ export function actionSystemPrompt(context: ActionContext): string {
     ? state.notes
         .filter((note) => !note.deleted && !note.private)
         .slice(0, 10)
-        .map((note) => `- ${note.id}: ${note.title || 'Untitled'}`)
+        .map((note) => `- ${note.id}: ${stripDataFence(note.title) || 'Untitled'}`)
     : [];
 
   const lines = [

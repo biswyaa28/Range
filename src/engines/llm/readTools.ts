@@ -1,5 +1,6 @@
 import type { Settings } from '@/domain/settings';
 import type { AppState, Note } from '@/domain/types';
+import { stripDataFence } from './sanitize';
 import type { LLMTool } from './types';
 
 export type ReadToolName =
@@ -25,7 +26,9 @@ const MAX_SNIPPETS = 5;
 const MAX_SNIPPET_LENGTH = 500;
 
 function dataBlock(lines: string[]): string {
-  return `<untrusted-local-data>\n${lines.join('\n')}\n</untrusted-local-data>`;
+  // Local text must not be able to close the fence it is wrapped in.
+  const safe = lines.map((line) => stripDataFence(line));
+  return `<untrusted-local-data>\n${safe.join('\n')}\n</untrusted-local-data>`;
 }
 
 function visibleNotes(context: ReadToolContext): Note[] {
@@ -94,7 +97,10 @@ export function executeReadTool(
     return { tool: name, noteIds: [], content: dataBlock(blocks.map((block) => `[block:${block.id}] ${block.title} · ${block.start}–${block.end}`)) };
   }
   const range = typeof args['range'] === 'string' ? args['range'] : 'week';
-  const stats = Object.values(context.state.dayStats).slice(-7);
+  const stats = Object.values(context.state.dayStats)
+    .filter((entry) => entry && typeof entry.date === 'string')
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-7);
   const totalTasks = stats.reduce((sum, entry) => sum + entry.tasksDone, 0);
   const totalFocus = stats.reduce((sum, entry) => sum + entry.focusMinutes, 0);
   return { tool: name, noteIds: [], content: dataBlock([`Range: ${range}`, `Tasks completed: ${totalTasks}`, `Focus minutes: ${totalFocus}`]) };
