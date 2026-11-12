@@ -1,4 +1,5 @@
 import { App as CapApp } from '@capacitor/app';
+import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Keyboard, KeyboardResize } from '@capacitor/keyboard';
@@ -8,8 +9,12 @@ import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 import { store as defaultStore, PersonalStore } from '@/store';
 import { isFocusModeOpen, closeFocusMode, subscribeFocusMode } from '@/features/focus/focusModeBus';
 import { isPaletteOpen, closePalette } from '@/features/palette/paletteBus';
-import type { FileSaver, HapticsAdapter, StorageAdapter } from './types';
+import { isChatOpen, closeChat } from '@/features/chat/chatBus';
+import type { FileSaver, HapticsAdapter, StorageAdapter, SecureStorageAdapter } from './types';
 import { webStorage } from './web';
+
+// Import the Capacitor auth bridge implementation
+import { CapacitorAuthBridge as capacitorAuthBridgeImpl } from './capacitorAuthBridge';
 
 export class CapacitorHaptics implements HapticsAdapter {
   constructor(private currentStore: PersonalStore = defaultStore) {}
@@ -117,19 +122,25 @@ export function handleHardwareBackButton(options?: {
   if (options?.closeModal) {
     if (options.closeModal()) return true;
   } else {
-    // 1. Palette
+    // 1. AI chat panel (topmost surface)
+    if (isChatOpen()) {
+      closeChat();
+      return true;
+    }
+
+    // 2. Palette
     if (isPaletteOpen()) {
       closePalette();
       return true;
     }
 
-    // 2. Focus mode
+    // 3. Focus mode
     if (isFocusModeOpen()) {
       closeFocusMode();
       return true;
     }
 
-    // 3. Open popover / modal / dialog
+    // 4. Open popover / modal / dialog
     const escapeTarget = document.querySelector<HTMLElement>(
       '[role="dialog"], [data-popover], .modal, .modal-backdrop',
     );
@@ -269,4 +280,24 @@ export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): 
 export const capacitorStorage: StorageAdapter = webStorage;
 export const capacitorHaptics = new CapacitorHaptics();
 export const capacitorFileSaver = new CapacitorFileSaver();
+export const capacitorSecureStorage: SecureStorageAdapter = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await SecureStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    await SecureStorage.setItem(key, value);
+  },
+  async removeItem(key: string): Promise<void> {
+    try {
+      await SecureStorage.removeItem(key);
+    } catch {
+      // already absent
+    }
+  },
+};
 
+export const capacitorAuthBridge = new capacitorAuthBridgeImpl();

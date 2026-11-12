@@ -3,6 +3,7 @@ import { defaultClock } from '@/domain/dates';
 import type { Settings } from '@/domain/settings';
 import type { BaseRecord } from '@/domain/types';
 import { EPOCH_TS } from '@/domain/types';
+import { friendlyAuthError } from '@/platform/googleAuth';
 import type { StorageAdapter } from '@/platform/types';
 import type { PersonalStore } from '@/store/store';
 import type { SettingsStore } from '@/store/settingsStore';
@@ -76,15 +77,6 @@ function errorMessage(error: unknown): string {
     return String((error as { message: string }).message);
   }
   return 'Sync failed. Try again.';
-}
-
-function isCancellation(error: unknown): boolean {
-  const code = errorCode(error);
-  return (
-    code === 'auth/popup-closed-by-user' ||
-    code === 'auth/cancelled-popup-request' ||
-    code === 'auth/user-cancelled'
-  );
 }
 
 function isOfflineError(error: unknown): boolean {
@@ -208,12 +200,19 @@ export class SyncEngine {
     try {
       await this.adapter.signInWithGoogle();
     } catch (error) {
-      if (isCancellation(error)) return;
+      // Cancellations resolve to an empty message and are not surfaced.
+      const message = friendlyAuthError(error);
+      if (!message) return;
       this.setState({
         status: this.isOnline() ? 'error' : 'offline',
-        error: isOfflineError(error) ? null : errorMessage(error),
+        error: isOfflineError(error) ? null : message,
       });
     }
+  }
+
+  /** Stops a pending native sign-in (system browser / account picker). */
+  async cancelSignIn(): Promise<void> {
+    await this.adapter?.cancelSignIn?.();
   }
 
   async signOut(): Promise<void> {
@@ -222,9 +221,11 @@ export class SyncEngine {
     try {
       await this.adapter.signOut();
     } catch (error) {
+      const message = friendlyAuthError(error);
+      if (!message) return;
       this.setState({
         status: this.isOnline() ? 'error' : 'offline',
-        error: isOfflineError(error) ? null : errorMessage(error),
+        error: isOfflineError(error) ? null : message,
       });
     }
   }
