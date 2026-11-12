@@ -11,6 +11,18 @@ export interface MergeSummary {
   ignored: number;
 }
 
+/**
+ * LWW ordering with a deterministic tiebreak: when two devices stamp the same
+ * millisecond, the higher deviceId wins so both sides converge on one value
+ * instead of each keeping its own record forever.
+ */
+function wins(inc: Record<string, unknown> & BaseRecord, cur: Record<string, unknown>): boolean {
+  const incoming = String(inc.updatedAt || EPOCH_TS);
+  const current = String(cur['updatedAt'] || EPOCH_TS);
+  if (incoming !== current) return incoming > current;
+  return String(inc.deviceId ?? '') > String(cur['deviceId'] ?? '');
+}
+
 function prepRemote(
   r: Record<string, unknown>,
   localDeviceId: string,
@@ -69,7 +81,7 @@ export function mergeRemote(
         return;
       }
 
-      if (String(inc.updatedAt) > String(cur['updatedAt'] || EPOCH_TS)) {
+      if (wins(inc, cur)) {
         const wasDel = !!cur['deleted'];
         const nowDel = !!inc.deleted;
         // Replace in place
