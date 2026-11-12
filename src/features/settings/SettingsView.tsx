@@ -1615,6 +1615,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span className="settings-sync-note">Local only</span>
           ),
         },
+        ...(sync.state.notice
+          ? [
+              {
+                id: 'sync-notice',
+                title: 'Notice',
+                description: sync.state.notice,
+                keywords: 'notice trimmed stats sync',
+                wide: true,
+                control: null,
+              },
+            ]
+          : []),
         {
           id: 'sync-privacy',
           title: 'AI API key',

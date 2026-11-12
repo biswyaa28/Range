@@ -8,6 +8,12 @@ import type { StorageAdapter } from '@/platform/types';
 import type { PersonalStore } from '@/store/store';
 import type { SettingsStore } from '@/store/settingsStore';
 import { hasPendingPreferences, mergePreferences, redactPreferences } from './preferences';
+import type { PushLedger } from '@/store/syncState';
+import { SyncStateStore, pushLedgerKey } from '@/store/syncState';
+import { planPull, type PullPlan } from './pullPlan';
+import { planMissingRemoteTombstones } from './reconcile';
+import type { CollectionName } from './batching';
+import { capDayStats as capDayStatsMap } from './appPayload';
 import type {
   RemoteSnapshot,
   SyncAccount,
@@ -17,10 +23,11 @@ import type {
   SyncStatus,
 } from './types';
 
-// Every sync pulls all four collections, so a short debounce burned Spark read
-// quota during editing bursts. Manual "sync now" is unaffected.
+// A debounce keeps editing bursts from turning into one sync per keystroke.
+// Manual "sync now" is unaffected.
 const DEFAULT_AUTO_SYNC_MS = 15_000;
-const SYNC_ACCOUNT_KEY = 'personalOS_sync_account_v1';
+// Bumped when the sync payload shape changes, so an old cursor is discarded.
+export const SYNC_CURSOR_SCHEMA = 1;
 
 export interface SyncEngineOptions {
   adapter?: SyncAdapter | null;
@@ -53,6 +60,22 @@ interface LocalChanges {
 function browserOnline(): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean') return true;
   return navigator.onLine;
+}
+
+/** Every record a committed batch carried, in collection order. */
+function committedRecords(chunk: SyncPush): Array<{
+  collection: CollectionName;
+  id: string;
+  updatedAt: string;
+}> {
+  const out: Array<{ collection: CollectionName; id: string; updatedAt: string }> = [];
+  const collections: CollectionName[] = ['blocks', 'tasks', 'notes', 'deadlines'];
+  for (const collection of collections) {
+    for (const record of chunk[collection]) {
+      out.push({ collection, id: record.id, updatedAt: String(record.updatedAt) });
+    }
+  }
+  return out;
 }
 
 function browserOnlineSubscription(listener: () => void): () => void {
@@ -99,7 +122,8 @@ function sameState(a: SyncState, b: SyncState): boolean {
     a.account === b.account &&
     a.lastSyncedAt === b.lastSyncedAt &&
     a.pending === b.pending &&
-    a.error === b.error
+    a.error === b.error &&
+    a.notice === b.notice
   );
 }
 
@@ -129,6 +153,10 @@ export class SyncEngine {
   private pushing = false;
   private running = false;
   private localChangeDuringSync = false;
+  /** Set when the next pull must ignore the cursor (account switch, reset). */
+  private fullPull = false;
+  /** Device-local sync bookkeeping: pull cursor and push ledger. */
+  private readonly syncState: SyncStateStore;
 
   private unsubAuth: (() => void) | null = null;
   private unsubOnline: (() => void) | null = null;
@@ -140,6 +168,7 @@ export class SyncEngine {
     this.store = options.store;
     this.settings = options.settings;
     this.storage = options.storage ?? null;
+    this.syncState = new SyncStateStore(this.storage);
     this.clock = options.clock ?? defaultClock;
     this.isOnline = options.isOnline ?? browserOnline;
     this.onlineSubscription = options.onlineSubscription ?? browserOnlineSubscription;
@@ -264,7 +293,13 @@ export class SyncEngine {
     let failure: unknown = null;
 
     try {
-      const snapshot = await adapter.pull(account);
+      const forceFull = this.fullPull;
+      const plan = forceFull
+        ? { since: null, full: true, reason: 'account-change' as const }
+        : this.planPull(account);
+      const pullStartedAt = this.clock.nowISO();
+      const snapshot = await adapter.pull(account, { since: plan.since });
+      if (forceFull) this.fullPull = false;
       if (this.state.account?.uid !== account.uid) {
         // Signed out or switched accounts while the pull was in flight.
         return;
@@ -272,17 +307,24 @@ export class SyncEngine {
       // Capture local changes after the pull (so edits made while waiting are
       // included) but before the merge (so remote records are not echoed back).
       const localChanges = this.captureLocalChanges();
+      this.reconcileDroppedRecords(snapshot, localChanges, plan);
       const payload = this.applyRemoteAndBuildPush(snapshot, localChanges);
 
       this.pushing = true;
       try {
-        await adapter.push(account, payload);
+        await this.pushWithProgress(adapter, account, payload);
       } finally {
         this.pushing = false;
       }
 
       if (this.state.account?.uid === account.uid) {
         this.quiet(() => this.store.markSynced(startedAt));
+        // The pull cursor moves to the start of the pull that just ran, so a
+        // write that landed while it ran is picked up next time.
+        this.writePullCursor(account, plan, pullStartedAt);
+        // Tombstones the remote has seen can go: the remote keeps its own copy
+        // until the TTL removes it.
+        this.quiet(() => this.store.gcExpiredTombstones(startedAt));
       }
       succeeded = true;
     } catch (error) {
@@ -317,6 +359,105 @@ export class SyncEngine {
     }
   }
 
+  /**
+   * Tombstones the records the remote dropped while this device was away.
+   *
+   * A remote tombstone expires after the retention window. A device that was
+   * offline for longer than that reads a full pull that no longer mentions
+   * the deleted record, and the next push would send it back. Only records
+   * the remote confirmed are judged, and only when they were not edited here,
+   * so no local work is lost.
+   */
+  private reconcileDroppedRecords(
+    snapshot: RemoteSnapshot,
+    local: LocalChanges,
+    plan: PullPlan,
+  ): void {
+    if (plan.reason !== 'stale-cursor') return;
+
+    const state = this.store.get();
+    const idsOf = (list: unknown[]): Set<string> =>
+      new Set(
+        list
+          .map((record) =>
+            record && typeof record === 'object' ? String((record as Record<string, unknown>)['id']) : '',
+          )
+          .filter((id) => id !== ''),
+      );
+    const remoteIds = {
+      blocks: idsOf(snapshot.blocks),
+      tasks: idsOf(snapshot.tasks),
+      notes: idsOf(snapshot.notes),
+      deadlines: idsOf(snapshot.deadlines),
+    };
+    const pendingIds = {
+      blocks: new Set(local.blocks.keys()),
+      tasks: new Set(local.tasks.keys()),
+      notes: new Set(local.notes.keys()),
+      deadlines: new Set(local.deadlines.keys()),
+    };
+
+    const result = planMissingRemoteTombstones({
+      local: {
+        blocks: state.blocks,
+        tasks: state.tasks,
+        notes: state.notes,
+        deadlines: state.deadlines,
+      },
+      remoteIds,
+      pendingIds,
+      ledger: this.syncState.readLedger(),
+    });
+
+    this.syncState.writeLedger(result.ledger);
+    if (result.tombstones.length === 0) return;
+    this.quiet(() => this.store.tombstoneRecords(result.tombstones));
+  }
+
+  /**
+   * Pushes the payload and remembers what the remote confirmed.
+   *
+   * A push can span several batches. When a later batch fails, the batches
+   * that already committed must not be sent again on the retry, and the
+   * records that never reached the remote must not be treated as synced.
+   */
+  private async pushWithProgress(
+    adapter: SyncAdapter,
+    account: SyncAccount,
+    payload: SyncPush,
+  ): Promise<void> {
+    const ledger = this.syncState.readLedger();
+    const pending = this.filterPushed(payload, ledger);
+
+    await adapter.push(account, pending, {
+      onChunkCommitted: (chunk) => {
+        for (const record of committedRecords(chunk)) {
+          ledger[pushLedgerKey(record.collection, record.id)] = record.updatedAt;
+        }
+        this.syncState.writeLedger(ledger);
+      },
+    });
+  }
+
+  /**
+   * Drops the records the remote already confirmed. A record that changed
+   * after it was confirmed keeps its new `updatedAt` and is pushed again.
+   */
+  private filterPushed(payload: SyncPush, ledger: PushLedger): SyncPush {
+    const isPushed = (
+      collection: CollectionName,
+      record: { id: string; updatedAt: string },
+    ): boolean => ledger[pushLedgerKey(collection, record.id)] === String(record.updatedAt);
+
+    return {
+      ...payload,
+      blocks: payload.blocks.filter((record) => !isPushed('blocks', record)),
+      tasks: payload.tasks.filter((record) => !isPushed('tasks', record)),
+      notes: payload.notes.filter((record) => !isPushed('notes', record)),
+      deadlines: payload.deadlines.filter((record) => !isPushed('deadlines', record)),
+    };
+  }
+
   private applyRemoteAndBuildPush(
     snapshot: RemoteSnapshot,
     local: LocalChanges,
@@ -349,7 +490,7 @@ export class SyncEngine {
       );
       const mergedPreferences = this.settings.get();
 
-      return {
+      const payload: SyncPush = {
         blocks: pick(state.blocks, local.blocks),
         tasks: pick(state.tasks, local.tasks),
         notes: pick(state.notes, local.notes),
@@ -367,8 +508,8 @@ export class SyncEngine {
           String(state.settings.updatedAt) === local.appSettings
             ? state.settings
             : null,
-        // Day stats live in one map; send the full set whenever a day changed
-        // so a merge write can never drop untouched days on another device.
+        // Day stats live in one document that is replaced wholesale; send the
+        // full set whenever a day changed so untouched days are never lost.
         dayStats: dayChanged ? state.dayStats : {},
         preferences:
           local.preferences.updatedAt > local.since &&
@@ -376,7 +517,26 @@ export class SyncEngine {
             ? redactPreferences(local.preferences)
             : null,
       };
+
+      return this.capDayStats(payload);
     });
+  }
+
+  /**
+   * Keeps the day map under the byte cap by dropping the oldest days. The user
+   * is told the history was trimmed, because older stats are gone on every
+   * device once the next sync lands.
+   */
+  private capDayStats(payload: SyncPush): SyncPush {
+    if (Object.keys(payload.dayStats).length === 0) return payload;
+
+    const capped = capDayStatsMap(payload.dayStats);
+
+    if (capped.droppedDays > 0) {
+      this.setState({ notice: 'Older stats were trimmed to keep sync working' });
+    }
+
+    return { ...payload, dayStats: capped.dayStats };
   }
 
   private captureLocalChanges(): LocalChanges {
@@ -421,6 +581,12 @@ export class SyncEngine {
       // shared device. Local records stay on disk and are merged with whatever
       // this account already has; only edits made from now on are pushed.
       this.quiet(() => this.store.markSynced(this.clock.nowISO()));
+      // The cursor now points at "now", so the switch still needs a full pull
+      // to download this account's older history.
+      this.fullPull = true;
+      // The push ledger belongs to the old account; its entries would hide
+      // this account's records from the first push.
+      this.syncState.writeLedger({});
     }
     this.rememberUid(account.uid);
 
@@ -484,23 +650,37 @@ export class SyncEngine {
   }
 
   private readLastUid(): string | null {
-    if (!this.storage) return null;
-    try {
-      const value = this.storage.getItem(SYNC_ACCOUNT_KEY);
-      return value && value.trim() ? value.trim() : null;
-    } catch {
-      return null;
-    }
+    return this.syncState.readAccountUid();
   }
 
   private rememberUid(uid: string): void {
     this.lastUid = uid;
-    if (!this.storage) return;
-    try {
-      this.storage.setItem(SYNC_ACCOUNT_KEY, uid);
-    } catch {
-      // remember in memory only
-    }
+    this.syncState.writeAccountUid(uid);
+  }
+
+  /**
+   * Decides how much the next pull reads. A cursor is only usable for the
+   * account that wrote it and only while it is fresh; otherwise the pull
+   * reads everything.
+   */
+  private planPull(account: SyncAccount): PullPlan {
+    const cursor = this.syncState.readCursor(SYNC_CURSOR_SCHEMA);
+    return planPull(cursor, account.uid, this.clock.nowISO(), SYNC_CURSOR_SCHEMA);
+  }
+
+  /** Records how far the pull reached, so the next one can read less. */
+  private writePullCursor(account: SyncAccount, plan: PullPlan, pullStartedAt: string): void {
+    const previous = this.syncState.readCursor(SYNC_CURSOR_SCHEMA);
+    this.syncState.writeCursor({
+      schema: SYNC_CURSOR_SCHEMA,
+      accountUid: account.uid,
+      lastPullAt: pullStartedAt,
+      lastFullPullAt: plan.full
+        ? pullStartedAt
+        : previous?.accountUid === account.uid
+          ? previous.lastFullPullAt
+          : pullStartedAt,
+    });
   }
 
   private computePending(): boolean {

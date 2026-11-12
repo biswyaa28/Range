@@ -40,6 +40,22 @@ export interface SyncPush {
   preferences: SyncedPreferences | null;
 }
 
+export interface SyncPullOptions {
+  /**
+   * Optional ISO-8601 cursor for incremental record queries (`updatedAt > since`).
+   * When omitted or null, the adapter fetches all records in every collection.
+   */
+  since?: string | null;
+}
+
+export interface SyncPushOptions {
+  /**
+   * Invoked after each committed batch in a multi-batch push so the engine can
+   * remember partial progress if a later batch fails.
+   */
+  onChunkCommitted?: (chunk: SyncPush) => void;
+}
+
 export type SyncStatus =
   | 'disabled'
   | 'signed-out'
@@ -57,6 +73,8 @@ export interface SyncState {
   /** Local records or preferences newer than the last successful sync. */
   pending: boolean;
   error: string | null;
+  /** Non-fatal informational notice from the last sync (e.g. trimmed stats). */
+  notice?: string | null;
 }
 
 /**
@@ -73,6 +91,6 @@ export interface SyncAdapter {
   /** Aborts an in-flight native sign-in when the flow supports it. */
   cancelSignIn?(): Promise<void>;
   signOut(): Promise<void>;
-  pull(account: SyncAccount): Promise<RemoteSnapshot>;
-  push(account: SyncAccount, changes: SyncPush): Promise<void>;
+  pull(account: SyncAccount, options?: SyncPullOptions): Promise<RemoteSnapshot>;
+  push(account: SyncAccount, changes: SyncPush, options?: SyncPushOptions): Promise<void>;
 }

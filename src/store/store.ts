@@ -3,10 +3,16 @@ import { STORAGE_KEY, BACKUP_KEY, EPOCH_TS, defaultState } from '@/domain/types'
 import type { StorageAdapter } from '@/platform/types';
 import { storage as defaultStorage } from '@/platform';
 import type { Clock } from '@/domain/dates';
-import { defaultClock } from '@/domain/dates';
+import { defaultClock, todayISO } from '@/domain/dates';
+import {
+  pruneDayStatsByAge,
+  STATS_RETENTION_DAYS,
+  statsCutoffISO,
+} from '@/domain/statsRetention';
+import { TOMBSTONE_TTL_DAYS } from '@/domain/tombstone';
 import type { IdGen } from '@/domain/id';
 import { defaultIdGen } from '@/domain/id';
-import { createSingletonSnapshot, diffAndStampSingletons, SingletonSnapshot } from './stamp';
+import { createSingletonSnapshot, diffAndStampSingletons, nextStamp, SingletonSnapshot } from './stamp';
 import { migrateSave } from './migrate';
 import { mergeRemote, MergeSummary } from './merge';
 
@@ -159,6 +165,7 @@ export class PersonalStore {
     if (typeof mutator === 'function') {
       mutator(this.data);
     }
+    this.enforceStatsRetention();
     this.snap = diffAndStampSingletons(this.data, this.snap, this.clock);
     this.data = {
       ...this.data,
@@ -212,6 +219,91 @@ export class PersonalStore {
     return this.data;
   }
 
+  /**
+   * Bounds the synced day map. Days are keyed by ISO date and the widest screen
+   * reads 400 back, so anything older than the retention window is dropped. The
+   * count guard keeps the per-update cost at zero until the map actually grows.
+   */
+  private enforceStatsRetention(): void {
+    if (Object.keys(this.data.dayStats).length <= STATS_RETENTION_DAYS + 30) return;
+    const cutoff = statsCutoffISO(todayISO(this.clock));
+    this.data.dayStats = pruneDayStatsByAge(this.data.dayStats, cutoff).dayStats;
+  }
+
+  /**
+   * Hard-removes tombstones the remote has already seen and that are past the
+   * retention window. The remote drops them too (the TTL timestamp on the
+   * document), so keeping a copy here only grows the local save. A tombstone
+   * that was never pushed stays: it is the only record of the deletion.
+   */
+  gcExpiredTombstones(nowISO: string, ttlDays = TOMBSTONE_TTL_DAYS): number {
+    const now = Date.parse(nowISO);
+    if (!Number.isFinite(now)) return 0;
+    const cutoff = now - ttlDays * 24 * 60 * 60 * 1000;
+    const since = String(this.data.syncedAt || EPOCH_TS);
+
+    let removed = 0;
+    const prune = <T extends BaseRecord>(list: T[]): T[] => {
+      const kept: T[] = [];
+      for (const record of list) {
+        const updatedAt = String(record.updatedAt || EPOCH_TS);
+        const expired = Date.parse(updatedAt);
+        const synced = updatedAt <= since;
+        if (record.deleted && synced && Number.isFinite(expired) && expired < cutoff) {
+          removed += 1;
+          continue;
+        }
+        kept.push(record);
+      }
+      return kept;
+    };
+
+    this.data.blocks = prune(this.data.blocks);
+    this.data.tasks = prune(this.data.tasks);
+    this.data.notes = prune(this.data.notes);
+    this.data.deadlines = prune(this.data.deadlines);
+    return removed;
+  }
+
+  /**
+   * Soft-deletes records the remote has dropped.
+   *
+   * Used when a full pull shows that the remote no longer holds a record
+   * this device once uploaded: the remote tombstone has expired, so the
+   * record would otherwise be pushed back and resurrected.
+   */
+  tombstoneRecords(
+    entries: Array<{ collection: 'blocks' | 'tasks' | 'notes' | 'deadlines'; id: string }>,
+  ): number {
+    if (entries.length === 0) return 0;
+    let removed = 0;
+
+    const apply = <T extends BaseRecord>(
+      list: T[],
+      ids: string[],
+    ): T[] => {
+      for (const id of ids) {
+        const record = list.find((candidate) => candidate.id === id);
+        if (!record || record.deleted) continue;
+        record.deleted = true;
+        record.updatedAt = nextStamp(record.updatedAt, this.clock);
+        removed += 1;
+      }
+      return list;
+    };
+
+    const idsFor = (name: 'blocks' | 'tasks' | 'notes' | 'deadlines'): string[] =>
+      entries.filter((entry) => entry.collection === name).map((entry) => entry.id);
+
+    this.data.blocks = apply(this.data.blocks, idsFor('blocks'));
+    this.data.tasks = apply(this.data.tasks, idsFor('tasks'));
+    this.data.notes = apply(this.data.notes, idsFor('notes'));
+    this.data.deadlines = apply(this.data.deadlines, idsFor('deadlines'));
+
+    if (removed > 0) this.flush();
+    return removed;
+  }
+
   pendingChanges(): PendingChangesResult {
     const since = String(this.data.syncedAt || EPOCH_TS);
     const rec = (r: BaseRecord | null | undefined): boolean =>
@@ -247,7 +339,10 @@ export class PersonalStore {
   }
 
   mergeRemote(remote: unknown): MergeSummary {
-    const summary = mergeRemote(this.data, remote, this.idGen);
+    const summary = mergeRemote(this.data, remote, this.idGen, {
+      now: this.clock.nowISO(),
+    });
+    this.enforceStatsRetention();
     this.snap = createSingletonSnapshot(this.data);
     this.flush();
     return summary;

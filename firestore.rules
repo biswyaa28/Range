@@ -13,30 +13,41 @@ service cloud.firestore {
     }
 
     // Records are plain JSON written with the record id as the document id.
+    // `expireAt` is the tombstone TTL timestamp; the app writes it only on
+    // soft-deleted records.
+    //
+    // The rules language has no byte-size property on a resource (only
+    // `resource.data`), so the document size is bounded by the field count
+    // here and by the byte cap the app applies before it writes
+    // (`STATE_APP_MAX_BYTES`).
     function recordShape(docId) {
       let d = request.resource.data;
-      return request.resource.size < 200 * 1024
-        && d.keys().size() <= 40
+      return d.keys().size() <= 40
         && (!('id' in d) || d.id == docId)
         && (!('deleted' in d) || d.deleted is bool)
         && (!('deviceId' in d) || d.deviceId is string)
         && (!('updatedAt' in d) || d.updatedAt is string)
-        && (!('createdAt' in d) || d.createdAt is string);
+        && (!('createdAt' in d) || d.createdAt is string)
+        && (!('expireAt' in d) || d.expireAt is timestamp);
     }
 
-    // `state/app` holds the singletons; `state/preferences` must never carry a
-    // plaintext AI key (it lives in the platform secure store).
+    // `state/app` holds the singletons, `state/stats` the day map (split out so
+    // its growth can never block the singletons), and `state/preferences` must
+    // never carry a plaintext AI key (it lives in the platform secure store).
+    //
+    // The day map is capped by its day count: the app trims the oldest days
+    // until the document fits in `STATE_APP_MAX_BYTES`.
     function stateShape(docId) {
       let d = request.resource.data;
-      return request.resource.size < 500 * 1024
-        && (
-          (docId == 'app' && d.keys().hasOnly(['profile', 'layout', 'settings', 'dayStats']))
-          || (
-            docId == 'preferences'
-            && d.keys().size() <= 40
-            && (!('ai' in d) || !('apiKey' in d.ai))
-          )
-        );
+      return (
+        (docId == 'app' && d.keys().hasOnly(['profile', 'layout', 'settings', 'dayStats']))
+        || (docId == 'stats' && d.keys().size() <= 4000)
+        || (
+          docId == 'preferences'
+          && d.keys().size() <= 40
+          && (!('ai' in d) || !('apiKey' in d.ai))
+        )
+      );
     }
 
     match /users/{uid} {

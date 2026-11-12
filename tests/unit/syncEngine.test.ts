@@ -4,12 +4,14 @@ import { defaultSettings } from '@/domain/settings';
 import type { Task } from '@/domain/types';
 import { PersonalStore } from '@/store/store';
 import { SettingsStore } from '@/store/settingsStore';
-import { SyncEngine } from '@/sync/engine';
+import { SyncEngine, SYNC_CURSOR_SCHEMA } from '@/sync/engine';
 import { mergePreferences, redactPreferences } from '@/sync/preferences';
+import { SyncStateStore } from '@/store/syncState';
 import type {
   RemoteSnapshot,
   SyncAccount,
   SyncAdapter,
+  SyncPullOptions,
   SyncPush,
 } from '@/sync/types';
 import { MemoryStorage } from './memoryStorage';
@@ -67,6 +69,7 @@ class MockAdapter implements SyncAdapter {
   pushError: unknown = null;
   pullGate: Promise<void> | null = null;
   pushGate: Promise<void> | null = null;
+  pullOptions: Array<SyncPullOptions | undefined> = [];
 
   private listeners = new Set<(account: SyncAccount | null) => void>();
 
@@ -91,8 +94,9 @@ class MockAdapter implements SyncAdapter {
     this.emit(null);
   }
 
-  async pull(): Promise<RemoteSnapshot> {
+  async pull(_account: SyncAccount, options?: SyncPullOptions): Promise<RemoteSnapshot> {
     this.pullCount++;
+    this.pullOptions.push(options);
     if (this.pullGate) await this.pullGate;
     if (this.pullError) throw this.pullError;
     return this.snapshot;
@@ -411,6 +415,40 @@ describe('SyncEngine with a mocked adapter', () => {
     expect(adapter.pushes).toHaveLength(2);
     expect(adapter.pushes[1]?.tasks.map((task) => task.id)).toEqual(['task-2']);
     expect(engine.getState()).toMatchObject({ status: 'idle', pending: false });
+    engine.dispose();
+  });
+
+  it('pulls whole collections on the first sync', async () => {
+    const { adapter, signIn } = setup();
+    await signIn();
+
+    expect(adapter.pullOptions[0]).toEqual({ since: null });
+  });
+
+  it('pulls from slightly before the last pull cursor so clock skew cannot hide writes', async () => {
+    const { adapter, accountStorage, signIn } = setup();
+    // The pull cursor is device-local bookkeeping, separate from the push
+    // cursor the app state keeps.
+    new SyncStateStore(accountStorage).writeCursor({
+      schema: SYNC_CURSOR_SCHEMA,
+      accountUid: ACCOUNT.uid,
+      lastPullAt: '2026-04-13T10:00:00.000Z',
+      lastFullPullAt: '2026-04-13T10:00:00.000Z',
+    });
+    await signIn();
+
+    expect(adapter.pullOptions[0]?.since).toBe('2026-04-13T09:50:00.000Z');
+  });
+
+  it('forces a full pull after an account switch', async () => {
+    const { adapter, engine, store, signIn } = setup();
+    await signIn(ACCOUNT);
+    store.markSynced('2026-04-13T10:00:00.000Z');
+
+    adapter.emit(ACCOUNT_B);
+    await engine.syncNow();
+
+    expect(adapter.pullOptions.at(-1)).toEqual({ since: null });
     engine.dispose();
   });
 
