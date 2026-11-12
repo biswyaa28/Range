@@ -279,9 +279,9 @@ describe('firestore.rules', () => {
       );
     });
 
-    it('refuses a live record that carries an expiry timestamp', async () => {
-      // The app only stamps an expiry on a tombstone, so a live record with
-      // one is a client that does not follow the protocol.
+    it('allows a live record that carries an expiry timestamp', async () => {
+      // Only the TTL policy reads `expireAt`; a client that restores a record
+      // without clearing it still writes a valid document.
       await assertSucceeds(
         setDoc(
           doc(clientFor(UID), 'users', UID, 'tasks', 'task-4'),

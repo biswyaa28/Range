@@ -145,6 +145,49 @@ describe('the synced day map', () => {
     expect(Object.keys(capped.dayStats)).toHaveLength(10);
   });
 
+  it('drops days older than the retention span without a notice', async () => {
+    const { store, adapter, engine, clock } = setup();
+
+    engine.start();
+    adapter.emit(ACCOUNT);
+    await engine.syncNow();
+
+    // Few enough days that the local count guard does not run, so the push is
+    // the step that has to apply the retention span.
+    clock.advanceMs(60_000);
+    store.set((state) => {
+      state.dayStats = {
+        ...syntheticDays(5, clock.nowISO()),
+        ...Object.fromEntries(
+          Array.from({ length: 5 }, (_, index) => {
+            const date = addDays('2020-01-01', index);
+            return [
+              date,
+              {
+                date,
+                blocksDone: 1,
+                blocksTotal: 1,
+                tasksDone: 1,
+                focusMinutes: 10,
+                updatedAt: clock.nowISO(),
+              } as DayStats,
+            ];
+          }),
+        ),
+      };
+    });
+
+    await engine.syncNow();
+
+    const pushed = adapter.pushes.at(-1)?.dayStats ?? {};
+    expect(Object.keys(pushed).some((date) => date < '2021-01-01')).toBe(false);
+    expect(Object.keys(pushed)).toHaveLength(5);
+    // The documented retention window is not a surprise the user needs a
+    // notice for.
+    expect(engine.getState().notice).toBeFalsy();
+    engine.dispose();
+  });
+
   it('tells the user when older stats were trimmed', async () => {
     const { store, adapter, engine, clock } = setup();
 

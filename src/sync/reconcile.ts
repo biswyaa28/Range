@@ -70,3 +70,24 @@ export function planMissingRemoteTombstones(input: ReconcileInput): ReconcileRes
 
   return { tombstones, ledger };
 }
+
+/**
+ * Keeps only the ledger entries for records that still exist locally.
+ *
+ * The ledger otherwise grows with every record the device has ever pushed,
+ * including tombstones that were garbage-collected long ago.
+ */
+export function pruneLedger(
+  ledger: PushLedger,
+  local: Record<ReconcileCollection, BaseRecord[]>,
+): PushLedger {
+  const kept: PushLedger = {};
+  for (const collection of RECONCILE_COLLECTIONS) {
+    for (const record of local[collection] ?? []) {
+      const key = pushLedgerKey(collection, record.id);
+      const confirmed = ledger[key];
+      if (confirmed !== undefined) kept[key] = confirmed;
+    }
+  }
+  return kept;
+}

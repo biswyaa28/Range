@@ -1,5 +1,6 @@
 import type { Clock } from '@/domain/dates';
-import { defaultClock } from '@/domain/dates';
+import { defaultClock, todayISO } from '@/domain/dates';
+import { pruneDayStatsByAge, statsCutoffISO } from '@/domain/statsRetention';
 import type { Settings } from '@/domain/settings';
 import type { BaseRecord } from '@/domain/types';
 import { EPOCH_TS } from '@/domain/types';
@@ -11,7 +12,7 @@ import { hasPendingPreferences, mergePreferences, redactPreferences } from './pr
 import type { PushLedger } from '@/store/syncState';
 import { SyncStateStore, pushLedgerKey } from '@/store/syncState';
 import { planPull, type PullPlan } from './pullPlan';
-import { planMissingRemoteTombstones } from './reconcile';
+import { planMissingRemoteTombstones, pruneLedger } from './reconcile';
 import type { CollectionName } from './batching';
 import { capDayStats as capDayStatsMap } from './appPayload';
 import type {
@@ -324,7 +325,22 @@ export class SyncEngine {
         this.writePullCursor(account, plan, pullStartedAt);
         // Tombstones the remote has seen can go: the remote keeps its own copy
         // until the TTL removes it.
-        this.quiet(() => this.store.gcExpiredTombstones(startedAt));
+        this.quiet(() => {
+          const removed = this.store.gcExpiredTombstones(startedAt);
+          // A tombstone that leaves the device takes its ledger entry with it,
+          // so the ledger stays proportional to the records that exist.
+          if (removed > 0) {
+            const state = this.store.get();
+            this.syncState.writeLedger(
+              pruneLedger(this.syncState.readLedger(), {
+                blocks: state.blocks,
+                tasks: state.tasks,
+                notes: state.notes,
+                deadlines: state.deadlines,
+              }),
+            );
+          }
+        });
       }
       succeeded = true;
     } catch (error) {
@@ -523,14 +539,19 @@ export class SyncEngine {
   }
 
   /**
-   * Keeps the day map under the byte cap by dropping the oldest days. The user
-   * is told the history was trimmed, because older stats are gone on every
-   * device once the next sync lands.
+   * Keeps the day map at the retention span and under the byte cap.
+   *
+   * Days older than the retention span are dropped without a notice: that is
+   * the documented history window, not a surprise. If the map is still too
+   * large, the oldest remaining days are dropped and the user is told, because
+   * that loss goes to every device on the next sync.
    */
   private capDayStats(payload: SyncPush): SyncPush {
     if (Object.keys(payload.dayStats).length === 0) return payload;
 
-    const capped = capDayStatsMap(payload.dayStats);
+    const cutoff = statsCutoffISO(todayISO(this.clock));
+    const recent = pruneDayStatsByAge(payload.dayStats, cutoff).dayStats;
+    const capped = capDayStatsMap(recent);
 
     if (capped.droppedDays > 0) {
       this.setState({ notice: 'Older stats were trimmed to keep sync working' });

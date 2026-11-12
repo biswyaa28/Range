@@ -6,7 +6,7 @@ import { PersonalStore } from '@/store/store';
 import { SettingsStore } from '@/store/settingsStore';
 import { SyncEngine, SYNC_CURSOR_SCHEMA } from '@/sync/engine';
 import { SyncStateStore, pushLedgerKey } from '@/store/syncState';
-import { planMissingRemoteTombstones } from '@/sync/reconcile';
+import { planMissingRemoteTombstones, pruneLedger } from '@/sync/reconcile';
 import type {
   RemoteSnapshot,
   SyncAccount,
@@ -198,6 +198,19 @@ describe('records the remote dropped', () => {
     );
 
     expect(result.ledger).toEqual(ledger);
+  });
+
+  it('keeps the ledger proportional to the records on the device', () => {
+    const pruned = pruneLedger(
+      {
+        [pushLedgerKey('tasks', 'task-1')]: NOW,
+        [pushLedgerKey('tasks', 'deleted-long-ago')]: NOW,
+        [pushLedgerKey('notes', 'note-1')]: NOW,
+      },
+      { blocks: [], tasks: [task('task-1')], notes: [], deadlines: [] },
+    );
+
+    expect(pruned).toEqual({ [pushLedgerKey('tasks', 'task-1')]: NOW });
   });
 });
 
