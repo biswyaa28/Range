@@ -1,5 +1,20 @@
+mod auth;
+
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::Manager;
+
+/// Runs the loopback OAuth flow off the UI thread so the window stays responsive.
+#[tauri::command]
+async fn google_sign_in(app: tauri::AppHandle) -> Result<auth::GoogleTokens, String> {
+  tauri::async_runtime::spawn_blocking(move || auth::google_sign_in(&app))
+    .await
+    .map_err(|_| "Sign-in failed. Try again.".to_string())?
+}
+
+#[tauri::command]
+fn google_sign_in_cancel() {
+  auth::cancel();
+}
 
 #[tauri::command]
 fn haptic(kind: String) {
@@ -25,6 +40,38 @@ fn haptic(kind: String) {
 
   #[cfg(not(target_os = "macos"))]
   let _ = kind;
+}
+
+const KEYCHAIN_SERVICE: &str = "com.personalos.app";
+
+#[tauri::command]
+fn secure_storage_get(key: String) -> Result<Option<String>, String> {
+  let entry =
+    keyring::Entry::new(KEYCHAIN_SERVICE, &key).map_err(|error| error.to_string())?;
+  match entry.get_password() {
+    Ok(value) => Ok(Some(value)),
+    Err(keyring::Error::NoEntry) => Ok(None),
+    Err(error) => Err(error.to_string()),
+  }
+}
+
+#[tauri::command]
+fn secure_storage_set(key: String, value: String) -> Result<(), String> {
+  let entry =
+    keyring::Entry::new(KEYCHAIN_SERVICE, &key).map_err(|error| error.to_string())?;
+  entry
+    .set_password(&value)
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn secure_storage_remove(key: String) -> Result<(), String> {
+  let entry =
+    keyring::Entry::new(KEYCHAIN_SERVICE, &key).map_err(|error| error.to_string())?;
+  match entry.delete_credential() {
+    Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+    Err(error) => Err(error.to_string()),
+  }
 }
 
 fn build_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
@@ -63,6 +110,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       app.set_menu(build_menu(app.handle())?)?;
       app.on_menu_event(|app, event| {
@@ -82,7 +130,14 @@ pub fn run() {
       }
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![haptic])
+    .invoke_handler(tauri::generate_handler![
+      haptic,
+      secure_storage_get,
+      secure_storage_set,
+      secure_storage_remove,
+      google_sign_in,
+      google_sign_in_cancel
+    ])
     .run(tauri::generate_context!())
     .expect("error while building tauri application");
 }
