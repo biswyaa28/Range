@@ -44,6 +44,31 @@ function mergedManifests() {
     .flatMap((entry) => findManifestFiles(join(intermediatesDir, entry.name)));
 }
 
+/**
+ * The Health Connect privacy policy URL must be a real hosted page. The Android
+ * build generates it from PRIVACY_POLICY_URL, so a placeholder can only come
+ * from a stray source resource or a stale generated value.
+ */
+const PRIVACY_URL_SOURCES = [
+  join('android', 'app', 'src', 'main', 'res', 'values', 'strings.xml'),
+  join('android', 'app', 'build', 'generated', 'res', 'resValues', 'debug', 'values', 'gradleResValues.xml'),
+];
+
+for (const relativePath of PRIVACY_URL_SOURCES) {
+  let contents;
+  try {
+    contents = readFileSync(join(process.cwd(), relativePath), 'utf8');
+  } catch {
+    continue;
+  }
+  if (contents.includes('example.com')) {
+    throw new Error(
+      `Placeholder privacy policy URL found in ${relativePath}. ` +
+        'Set PRIVACY_POLICY_URL for the Android build and delete the example.com value.',
+    );
+  }
+}
+
 const manifests = mergedManifests();
 if (manifests.length === 0) {
   throw new Error(

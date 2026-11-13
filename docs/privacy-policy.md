@@ -3,44 +3,93 @@
 **App:** Personal OS
 **Effective date:** 13 November 2026
 
-Personal OS can show health insights on Android by reading data from Health
-Connect. This policy explains what is read, why, and what happens to it.
+Personal OS is a local-first personal dashboard. Everything you create is
+stored on your device first. Cloud sync, the AI assistant and health insights
+are optional features you turn on yourself. This policy explains exactly what
+each one handles.
 
-## Health data we read
+## Google account and cloud sync
 
-With your permission, Personal OS reads only:
+Signing in with Google is optional. If you sign in, Personal OS uses Firebase
+Authentication to confirm your identity and stores your data in Cloud
+Firestore under a document tree keyed by your Firebase user id
+(`users/{uid}`). Only you can read or write that tree; the security rules
+reject every other account.
 
-- Steps
-- Sleep sessions
-- Active calories burned
+What sync stores when you are signed in:
 
-We do not request heart rate, write access, background access, or health
-history older than the last 30 days.
+- Blocks (your timetable), tasks, deadlines and notes, including their
+  title, body, dates and completion state.
+- Your profile, home layout, app preferences and daily stats.
+- A device identifier and `createdAt`/`updatedAt` timestamps used to resolve
+  conflicts between devices.
+- Deleted records are kept as small tombstones until they expire, so a
+  deletion on one device is not undone by another.
 
-## Why we read it
+Sync is last-write-wins. Google receives the data as our hosting and database
+provider; it is not used for advertising, profiling or any purpose other than
+storing your account data. Personal OS does not run analytics or tracking
+SDKs.
 
-The data is used for one purpose: to show your steps, last night's sleep, and
-today's active calories in the Health section of Insights.
+## AI assistant
 
-## How it is processed
+The assistant is off until you add your own API key. When you send a message,
+the text you type, the conversation so far and the app data the assistant is
+allowed to read are sent to Google's Gemini API to generate a reply.
 
-Health data is processed on your device only.
+- Note text is included **only** when you turn on "Read your notes". It is off
+  by default.
+- Notes marked private are **never** sent to the AI, even when note access is
+  on.
+- Your API key is stored in the device's secure storage (Keychain on macOS,
+  Keystore-backed storage on Android, the browser's local storage on the web).
+  It is never written to Firebase or included in settings backups.
+- Requests go directly from your device to Google under your own API key and
+  Google's terms.
 
-- It is never stored by Personal OS.
-- It is never synced to a server or another device.
-- It is never shared with third parties.
-- It is never sold.
-- It is never used for advertising or marketing.
+## Health Connect (Android)
 
-## Your control
+With your permission, Personal OS reads only steps, sleep sessions and active
+calories burned from Health Connect.
 
-You can grant or deny access in the Health Connect permission screen. You can
-change or revoke access at any time in the Health Connect app.
+- Access is read-only. The app never writes health data.
+- Health data is processed on your device to show the Health section of
+  Insights. It is never stored by the app, never synced to Firebase, never
+  shared and never sold.
+- You can revoke access at any time in the Health Connect app. Because the app
+  keeps no copy, there is no separate health-data record to delete.
 
-Revoking access stops all future reads. Uninstalling Personal OS removes the
-app and its access. Because health data is not stored by the app, there is no
-separate health-data copy to delete.
+## What we never do
+
+- No selling or renting of your data.
+- No advertising or marketing use.
+- No third-party analytics or crash-reporting SDKs.
+- No server of our own: the app talks to Firebase and, if you enable it, the
+  AI provider you chose.
+
+## Retention and deletion
+
+Local data stays until you clear it. In Settings → Data:
+
+- **Clear data on this device** removes the local copy only. If you are signed
+  in, the cloud copy returns on the next sync.
+- **Delete my cloud data** permanently deletes every document under
+  `users/{uid}` in Firestore, then clears this device and signs you out.
+
+You can also delete your Firebase account and its data from the Firebase
+console. Backups you exported are plain JSON files under your control; delete
+them like any other file.
+
+## Children
+
+Personal OS is not directed at children under 13 and does not knowingly collect
+their data.
+
+## Changes
+
+Material changes to this policy will be published on this page with a new
+effective date.
 
 ## Contact
 
-Questions about this policy: [github.com/biswyaa28](https://github.com/biswyaa28)
+Questions or deletion requests: {EMAIL}

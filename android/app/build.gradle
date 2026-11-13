@@ -10,6 +10,12 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Health Connect declares a privacy policy URL. Keep it out of source so
+        // a release build can point at the deployed page:
+        //   PRIVACY_POLICY_URL=https://example.org/privacy.html ./gradlew assembleRelease
+        def privacyPolicyUrl = System.getenv('PRIVACY_POLICY_URL') ?: 'https://biswyaa28.github.io/personal-os/privacy.html'
+        resValue "string", "health_connect_privacy_policy_url", privacyPolicyUrl
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61

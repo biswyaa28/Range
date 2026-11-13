@@ -51,6 +51,21 @@ secure store (Keychain/Keystore); it is never an environment variable and never
 syncs. Full console steps: [`docs/AUTH.md`](docs/AUTH.md) and
 [`docs/FIREBASE_SYNC.md`](docs/FIREBASE_SYNC.md).
 
+### Hosting the privacy policy
+
+[`docs/privacy.html`](docs/privacy.html) is a self-contained page (no build,
+no assets). To publish it on GitHub Pages: **Settings → Pages → Deploy from a
+branch**, pick `master` and the `/docs` folder; the URL becomes
+`https://<user>.github.io/<repo>/privacy.html`. On Firebase Hosting's free
+Spark plan, `firebase init hosting`, set the public directory to `docs`, then
+`firebase deploy --only hosting`.
+
+That URL is the single source of truth: set it in
+[`src/config/links.ts`](src/config/links.ts) and, for Android, in the
+`PRIVACY_POLICY_URL` environment variable consumed by
+`android/app/build.gradle` (a default is baked in). `npm run check:health-manifest`
+fails if a placeholder `example.com` URL returns.
+
 ## npm scripts
 
 | Script | What it does |
