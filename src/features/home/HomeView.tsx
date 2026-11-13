@@ -27,7 +27,7 @@ import {
   type BentoPresetName,
   type ResolvedBentoLayout,
 } from '@/domain/bentoLayout';
-import { store, useStore } from '@/store';
+import { store, useSettings, useStore } from '@/store';
 import { useToast } from '@/ui/Toast';
 import { Icon } from '@/ui/Icon';
 import { Haptics } from '@/engines/haptics';
@@ -96,6 +96,7 @@ function cardExtraClass(id: string): string {
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   const state = useStore();
+  const settings = useSettings();
   const toast = useToast();
   const reduced = useReducedMotion();
   const desktop = useMediaQuery('(min-width: 1100px)');
@@ -110,7 +111,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   const resizeRef = useRef<ResizeState | null>(null);
   const pendingRef = useRef<{ cleanup: () => void } | null>(null);
 
-  const data = useMemo(() => buildHomeData(state, now), [state, now]);
+  const data = useMemo(
+    () => buildHomeData(state, now, settings.weekStart, settings.clockFormat),
+    [state, now, settings.weekStart, settings.clockFormat],
+  );
   const layout = useMemo(
     () =>
       resolveBentoLayout(

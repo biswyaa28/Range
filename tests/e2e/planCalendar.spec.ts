@@ -248,3 +248,23 @@ test.describe('Plan calendar mobile (390px)', () => {
     expect(consoleErrors).toEqual([]);
   });
 });
+
+test.describe("Week start setting", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
+  test("Sunday start moves the first calendar column", async ({ page }) => {
+    await page.goto("/#settings");
+    await page.locator('[aria-label="Week starts on"] button[data-value="0"]').click();
+
+    await page.goto("/#plan");
+    await expect(page.locator(".cal-hrow .cal-day-h .wd").first()).toHaveText("SUN");
+
+    expect(await page.evaluate(() => localStorage.getItem("personalOS_settings_v1"))).toContain(
+      "\"weekStart\":0",
+    );
+  });
+});

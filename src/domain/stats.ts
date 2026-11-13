@@ -1,5 +1,12 @@
 import type { Block, DayStats } from './types';
-import { todayISO, addDays, mondayIndex, DAY_SHORT, defaultClock, Clock } from './dates';
+import {
+  addDays,
+  todayISO,
+  weekDayIsos,
+  weekDayLabels,
+  defaultClock,
+  Clock,
+} from './dates';
 import { blocksForDate, blockDoneOn } from './recurrence';
 
 /**
@@ -95,19 +102,20 @@ export interface DayActivity {
 }
 
 /**
- * Returns the 7 days of the current week (Mon-Sun) with activity counts.
+ * Returns the 7 days of the current week with activity counts. The first
+ * column follows the user's week-start setting.
  */
 export function weeklyActivity(
   dayStats: Record<string, DayStats>,
   clock: Clock = defaultClock,
+  weekStart: number = 1,
 ): DayActivity[] {
   const t = todayISO(clock);
-  const currentMonIdx = mondayIndex(clock.now(), clock);
-  const monday = addDays(t, -currentMonIdx);
+  const labels = weekDayLabels(weekStart);
 
-  return DAY_SHORT.map((short, k) => {
-    const iso = addDays(monday, k);
+  return weekDayIsos(t, weekStart).map((iso, k) => {
     const s = dayStats[iso];
+    const short = labels[k] ?? '';
     return {
       iso,
       blocksDone: s?.blocksDone ?? 0,

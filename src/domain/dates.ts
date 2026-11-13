@@ -85,10 +85,75 @@ export function diffDays(a: string, b: string): number {
 
 /**
  * Our week index: 0 = Monday ... 6 = Sunday (grid runs Mon-Sun).
+ * Kept for fixed Monday-first data such as recurring blocks (stored 0-6).
  */
 export function mondayIndex(d?: Date, clock: Clock = defaultClock): number {
   const date = d || clock.now();
   return (date.getDay() + 6) % 7;
+}
+
+/**
+ * Position of a date inside a week that starts on `weekStart`
+ * (0 = Sunday, 1 = Monday, 6 = Saturday).
+ */
+export function weekIndex(date: Date, weekStart: number = 1): number {
+  return (date.getDay() - weekStart + 7) % 7;
+}
+
+/** ISO date of the first day of the week that contains `iso`. */
+export function startOfWeek(iso: string, weekStart: number = 1): string {
+  return addDays(iso, -weekIndex(fromISO(iso), weekStart));
+}
+
+/** The seven ISO dates of the week containing `iso`, in display order. */
+export function weekDayIsos(iso: string, weekStart: number = 1): string[] {
+  const first = startOfWeek(iso, weekStart);
+  return Array.from({ length: 7 }, (_, index) => addDays(first, index));
+}
+
+/** Weekday labels (MON..SUN) rotated to start on `weekStart`. */
+export function weekDayLabels(weekStart: number = 1): string[] {
+  // DAY_SHORT is Monday-first; weekStart uses Sunday = 0.
+  const start = (((weekStart % 7) + 7) % 7 + 6) % 7;
+  return Array.from({ length: 7 }, (_, index) => DAY_SHORT[(start + index) % 7] ?? '');
+}
+
+/** First cell of a six-row month grid for the month containing `iso`. */
+export function monthGridStart(iso: string, weekStart: number = 1): string {
+  const date = fromISO(iso);
+  const first = toISO(new Date(date.getFullYear(), date.getMonth(), 1));
+  return addDays(first, -weekIndex(fromISO(first), weekStart));
+}
+
+/**
+ * Formats minutes since midnight for display. `24h` keeps the stored
+ * `HH:MM` shape; `12h` renders "12:05 PM".
+ */
+export function formatTime(minutes: number, clockFormat: '12h' | '24h' = '24h'): string {
+  const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60);
+  const mins = String(normalized % 60).padStart(2, '0');
+  if (clockFormat === '24h') {
+    return String(hours).padStart(2, '0') + ':' + mins;
+  }
+  const period = hours < 12 ? 'AM' : 'PM';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${mins} ${period}`;
+}
+
+/** Formats a stored `HH:MM` value for display. */
+export function formatTimeHM(hm: string, clockFormat: '12h' | '24h' = '24h'): string {
+  return formatTime(hmToMin(hm), clockFormat);
+}
+
+/** Formats a Date or ISO timestamp as a wall-clock time. */
+export function formatTimeISO(
+  value: string | number | Date,
+  clockFormat: '12h' | '24h' = '24h',
+): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return formatTime(date.getHours() * 60 + date.getMinutes(), clockFormat);
 }
 
 export function nowHM(clock: Clock = defaultClock): string {

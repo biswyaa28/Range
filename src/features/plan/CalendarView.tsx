@@ -8,9 +8,11 @@ import {
   fmtShort,
   fromISO,
   hmToMin,
-  mondayIndex,
+  monthGridStart,
   toISO,
   todayISO,
+  weekDayIsos,
+  weekDayLabels,
 } from '@/domain/dates';
 import {
   blocksForDate,
@@ -31,6 +33,7 @@ import {
   softDeleteRecord,
   softUndeleteRecord,
   touchRecord,
+  useSettings,
   useStore,
 } from '@/store';
 import { Icon } from '@/ui/Icon';
@@ -85,11 +88,6 @@ function monthShift(iso: string, delta: number): string {
   return toISO(date);
 }
 
-function weekDates(iso: string): string[] {
-  const monday = addDays(iso, -mondayIndex(fromISO(iso)));
-  return Array.from({ length: 7 }, (_, index) => addDays(monday, index));
-}
-
 function dayWindow(profile: Profile): GridBound {
   const start = hmToMin(profile.wake || '07:00');
   let end = hmToMin(profile.sleep || '23:00');
@@ -136,7 +134,11 @@ function focusRects(bestTime: string, grid: GridBound): GridBound[] {
     .filter((range) => range.e - range.s >= 30);
 }
 
-function calendarTitle(mode: CalendarMode, anchor: string): string {
+function calendarTitle(
+  mode: CalendarMode,
+  anchor: string,
+  weekStart: number,
+): string {
   const date = fromISO(anchor);
   if (mode === 'month') {
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -148,7 +150,7 @@ function calendarTitle(mode: CalendarMode, anchor: string): string {
       day: 'numeric',
     });
   }
-  const dates = weekDates(anchor);
+  const dates = weekDayIsos(anchor, weekStart);
   const first = dates[0];
   const last = dates[6];
   if (!first || !last) return '';
@@ -178,6 +180,7 @@ function minuteOfNow(): number {
 
 export const CalendarView: React.FC = () => {
   const blocks = useStore((state) => state.blocks);
+  const settings = useSettings();
   const profile = useStore((state) => state.profile);
   const deadlines = useStore((state) => state.deadlines);
   const toast = useToast();
@@ -200,8 +203,8 @@ export const CalendarView: React.FC = () => {
 
   const today = todayISO();
   const dates = useMemo(
-    () => (mode === 'day' ? [anchor] : weekDates(anchor)),
-    [mode, anchor],
+    () => (mode === 'day' ? [anchor] : weekDayIsos(anchor, settings.weekStart)),
+    [mode, anchor, settings.weekStart],
   );
   const grid = useMemo(
     () => computeGrid(dates, allHours, profile, blocks),
@@ -216,11 +219,9 @@ export const CalendarView: React.FC = () => {
   );
 
   const monthCells = useMemo(() => {
-    const date = fromISO(anchor);
-    const first = new Date(date.getFullYear(), date.getMonth(), 1);
-    const start = addDays(toISO(first), -mondayIndex(first));
+    const start = monthGridStart(anchor, settings.weekStart);
     return Array.from({ length: 42 }, (_, index) => addDays(start, index));
-  }, [anchor]);
+  }, [anchor, settings.weekStart]);
 
   const closePopover = useCallback(() => setPopover(null), []);
 
@@ -539,7 +540,7 @@ export const CalendarView: React.FC = () => {
     const count = blocksForDate(blocks, iso).length;
     return (
       <>
-        <span className="wd">{DAY_SHORT[mondayIndex(date)]}</span>
+        <span className="wd">{DAY_SHORT[(date.getDay() + 6) % 7]}</span>
         <span className="dn">{date.getDate()}</span>
         <span className="cnt">{count}</span>
       </>
@@ -742,8 +743,8 @@ export const CalendarView: React.FC = () => {
   const renderMonth = () => (
     <div className="plan-month">
       <div className="cal-mwd">
-        {DAY_SHORT.map((day) => (
-          <b key={day}>{day}</b>
+        {weekDayLabels(settings.weekStart).map((day, index) => (
+          <b key={`${day}-${index}`}>{day}</b>
         ))}
       </div>
       <div className="cal-month">
@@ -847,7 +848,7 @@ export const CalendarView: React.FC = () => {
           key={tick}
           className={`cal-date${direction === 'l' ? ' anim-l' : direction === 'r' ? ' anim-r' : ''}`}
         >
-          {calendarTitle(mode, anchor)}
+          {calendarTitle(mode, anchor, settings.weekStart)}
         </h2>
         <span className="spacer" />
         <button

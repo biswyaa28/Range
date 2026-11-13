@@ -1,11 +1,13 @@
 import type { AppState, Block, Deadline, Task } from '@/domain/types';
 import {
-  DAY_SHORT,
   addDays,
   fmtHM,
+  formatTime,
   hmToMin,
-  mondayIndex,
   toISO,
+  weekDayIsos,
+  weekDayLabels,
+  weekIndex,
 } from '@/domain/dates';
 import { blocksForDate, blockDoneOn } from '@/domain/recurrence';
 import { currentStreak } from '@/domain/stats';
@@ -108,7 +110,12 @@ function dayLabel(short: string): string {
   return short.charAt(0) + short.slice(1).toLowerCase();
 }
 
-export function buildHomeData(state: AppState, now: Date = new Date()): HomeData {
+export function buildHomeData(
+  state: AppState,
+  now: Date = new Date(),
+  weekStart: number = 1,
+  clockFormat: '12h' | '24h' = '24h',
+): HomeData {
   const today = toISO(now);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const nowHM = fmtHM(nowMinutes);
@@ -139,9 +146,9 @@ export function buildHomeData(state: AppState, now: Date = new Date()): HomeData
       (block) => !blockDoneOn(block, today) && hmToMin(block.end) > nowMinutes,
     ) ?? null;
 
-  const monday = addDays(today, -mondayIndex(now));
-  const week: HomeWeekDay[] = DAY_SHORT.map((short, index) => {
-    const iso = addDays(monday, index);
+  const weekLabels = weekDayLabels(weekStart);
+  const week: HomeWeekDay[] = weekDayIsos(today, weekStart).map((iso, index) => {
+    const short = weekLabels[index] ?? '';
     const stats = state.dayStats[iso];
     const isToday = iso === today;
     return {
@@ -182,14 +189,14 @@ export function buildHomeData(state: AppState, now: Date = new Date()): HomeData
     ? {
         start: focusRange[0],
         end: focusRange[1],
-        label: `${fmtHM(focusRange[0])}–${fmtHM(focusRange[1])}`,
+        label: `${formatTime(focusRange[0], clockFormat)}–${formatTime(focusRange[1], clockFormat)}`,
       }
     : null;
 
   const year = now.getFullYear();
   const month = now.getMonth();
   const firstOfMonth = new Date(year, month, 1);
-  const lead = mondayIndex(firstOfMonth);
+  const lead = weekIndex(firstOfMonth, weekStart);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthKey = today.slice(0, 7);
   const monthDeadlines = state.deadlines.filter(
@@ -198,7 +205,7 @@ export function buildHomeData(state: AppState, now: Date = new Date()): HomeData
   const dueDates = new Set(monthDeadlines.map((deadline) => deadline.due));
   const cells: HomeCalendarCell[] = [];
 
-  ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((label, index) => {
+  weekDayLabels(weekStart).map((label) => label[0] ?? '').forEach((label, index) => {
     cells.push({
       key: `head-${index}`,
       label,

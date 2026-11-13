@@ -1,6 +1,6 @@
 import type { AppState, DayStats } from './types';
 import type { Clock } from './dates';
-import { DAY_SHORT, addDays, defaultClock, fromISO, mondayIndex } from './dates';
+import { DAY_SHORT, addDays, defaultClock, fromISO, weekDayIsos, weekIndex } from './dates';
 import { computeBlockCounts, currentStreak } from './stats';
 
 export type InsightRange = 'week' | '30d';
@@ -30,23 +30,27 @@ export interface InsightSummary {
   hasActivity: boolean;
 }
 
-/** Monday-first week or the last 30 days, both ending today. */
+/** The current week (per week-start setting) or the last 30 days, ending today. */
 export function insightDayIsos(
   range: InsightRange,
   clock: Clock = defaultClock,
+  weekStart: number = 1,
 ): string[] {
   const today = clock.todayISO();
   if (range === 'week') {
-    const monday = addDays(today, -mondayIndex(clock.now(), clock));
-    return Array.from({ length: 7 }, (_, index) => addDays(monday, index));
+    return weekDayIsos(today, weekStart);
   }
   return Array.from({ length: 30 }, (_, index) => addDays(today, -(29 - index)));
 }
 
 /** Short chart label: "Mon" for the week, "11/8" for the 30-day view. */
-export function insightDayLabel(iso: string, range: InsightRange): string {
+export function insightDayLabel(
+  iso: string,
+  range: InsightRange,
+  weekStart: number = 1,
+): string {
   if (range === 'week') {
-    const short = DAY_SHORT[mondayIndex(fromISO(iso))] ?? '—';
+    const short = DAY_SHORT[weekIndex(fromISO(iso), weekStart)] ?? '—';
     return short.charAt(0) + short.slice(1).toLowerCase();
   }
   const date = fromISO(iso);
@@ -88,16 +92,17 @@ export function buildInsightSummary(
   state: Pick<AppState, 'blocks' | 'dayStats' | 'profile'>,
   range: InsightRange,
   clock: Clock = defaultClock,
+  weekStart: number = 1,
 ): InsightSummary {
   const today = clock.todayISO();
   const stats = todayStats(state, today);
-  const isos = insightDayIsos(range, clock);
+  const isos = insightDayIsos(range, clock, weekStart);
 
   const days: InsightDay[] = isos.map((iso) => {
     const day = stats[iso];
     return {
       iso,
-      label: insightDayLabel(iso, range),
+      label: insightDayLabel(iso, range, weekStart),
       blocksDone: day?.blocksDone ?? 0,
       blocksTotal: day?.blocksTotal ?? 0,
       tasksDone: day?.tasksDone ?? 0,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { AppRoute } from '@/hooks';
-import { useStore } from '@/store';
+import { useSettings, useStore } from '@/store';
 import type { InsightChartItem, InsightRange } from '@/domain/insights';
 import { buildBarChart, buildInsightSummary } from '@/domain/insights';
 import { todayISO } from '@/domain/dates';
@@ -192,9 +192,13 @@ export interface InsightsViewProps {
 
 export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
   const state = useStore();
+  const settings = useSettings();
   const [range, setRange] = useState<InsightRange>('week');
 
-  const summary = useMemo(() => buildInsightSummary(state, range), [state, range]);
+  const summary = useMemo(
+    () => buildInsightSummary(state, range, undefined, settings.weekStart),
+    [state, range, settings.weekStart],
+  );
 
   const healthSupported = platformName === 'android';
   const [healthState, setHealthState] = useState<HealthUiState>('idle');
