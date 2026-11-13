@@ -3,6 +3,9 @@ import type { AppRoute } from '@/hooks';
 import { useStore } from '@/store';
 import type { InsightChartItem, InsightRange } from '@/domain/insights';
 import { buildBarChart, buildInsightSummary } from '@/domain/insights';
+import { todayISO } from '@/domain/dates';
+import { health, platformName } from '@/platform';
+import type { HealthDataSummary } from '@/platform';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
@@ -128,6 +131,61 @@ const BarChart: React.FC<BarChartProps> = ({ items, ariaLabel, goal, goalLabel }
   );
 };
 
+interface HealthStatProps {
+  metric: 'steps' | 'sleep' | 'active';
+  label: string;
+  value: string;
+  sub: string;
+  chip?: string;
+  spark?: number[];
+  live?: boolean;
+}
+
+const HealthStat: React.FC<HealthStatProps> = ({
+  metric,
+  label,
+  value,
+  sub,
+  chip,
+  spark,
+  live = false,
+}) => (
+  <article
+    className={`stat-card insights-health-card${live ? ' is-live' : ''}`}
+    data-health={metric}
+  >
+    <div className="stat-label">
+      {label}
+      {chip ? <span className="chip">{chip}</span> : null}
+    </div>
+    <div className="stat-big">{value}</div>
+    {spark ? (
+      <Sparkline data={spark} width={220} height={44} className="insight-health-spark" />
+    ) : null}
+    <div className="stat-sub">{sub}</div>
+  </article>
+);
+
+function formatHours(hours?: number): string {
+  if (hours === undefined) return '—';
+  const minutes = Math.round(hours * 60);
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function formatNumber(value?: number): string {
+  return value === undefined ? '—' : value.toLocaleString();
+}
+
+type HealthUiState =
+  | 'idle'
+  | 'checking'
+  | 'loading'
+  | 'ready'
+  | 'empty'
+  | 'denied'
+  | 'unavailable'
+  | 'error';
+
 export interface InsightsViewProps {
   onNavigate?: (route: AppRoute) => void;
 }
@@ -137,6 +195,96 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
   const [range, setRange] = useState<InsightRange>('week');
 
   const summary = useMemo(() => buildInsightSummary(state, range), [state, range]);
+
+  const healthSupported = platformName === 'android';
+  const [healthState, setHealthState] = useState<HealthUiState>('idle');
+  const [healthData, setHealthData] = useState<HealthDataSummary | null>(null);
+
+  const loadHealth = async () => {
+    setHealthState('checking');
+    try {
+      const access = await health.requestAccess();
+      if (access === 'unavailable') {
+        setHealthState('unavailable');
+        return;
+      }
+      if (access === 'denied') {
+        setHealthState('denied');
+        return;
+      }
+
+      setHealthState('loading');
+      const data = await health.getSummary(todayISO());
+      setHealthData(data);
+      setHealthState(data ? 'ready' : 'empty');
+    } catch {
+      setHealthState('error');
+    }
+  };
+
+  const handleHealth = () => {
+    if (!healthSupported) return;
+
+    if (healthState === 'denied') {
+      void health
+        .openSettings()
+        .then(() => setHealthState('idle'))
+        .catch(() => setHealthState('error'));
+      return;
+    }
+
+    void loadHealth();
+  };
+
+  const healthChip = !healthSupported
+    ? 'Sample'
+    : healthState === 'ready'
+      ? 'Health Connect'
+      : healthState === 'denied'
+        ? 'No access'
+        : healthState === 'unavailable'
+          ? 'Unavailable'
+          : healthState === 'error'
+            ? 'Error'
+            : 'Not connected';
+
+  const healthHint = !healthSupported
+    ? 'Steps, sleep and active calories from a tracker. The sparklines below are sample values until a provider is connected.'
+    : healthState === 'ready'
+      ? "Today's steps and active calories, plus last night's sleep. Read-only from Health Connect; nothing leaves this device."
+      : healthState === 'empty'
+        ? 'No health data yet. Check that Health Connect has data and that access is granted.'
+        : healthState === 'denied'
+          ? "Access wasn't granted. Open Health Connect to allow steps, sleep and active calories."
+          : healthState === 'unavailable'
+            ? "Health Connect isn't available on this device. Install Health Connect from the Play Store."
+            : healthState === 'error'
+              ? "Couldn't read Health Connect. Try again."
+              : healthState === 'checking' || healthState === 'loading'
+                ? 'Waiting for Health Connect…'
+                : 'Read-only access to steps, sleep and active calories. Data stays on this device.';
+
+  const healthAction = !healthSupported
+    ? 'Preview (coming soon)'
+    : healthState === 'checking'
+      ? 'Connecting…'
+      : healthState === 'loading'
+        ? 'Reading…'
+        : healthState === 'denied'
+          ? 'Open Health Connect'
+          : healthState === 'unavailable'
+            ? 'Unavailable'
+            : healthState === 'error'
+              ? 'Try again'
+              : healthState === 'ready' || healthState === 'empty'
+                ? 'Refresh'
+                : 'Connect Health Connect';
+
+  const healthActionDisabled =
+    !healthSupported ||
+    healthState === 'checking' ||
+    healthState === 'loading' ||
+    healthState === 'unavailable';
 
   const navigate = (route: AppRoute) => {
     if (onNavigate) {
@@ -278,53 +426,83 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
         <div className="insights-health-head">
           <div>
             <h2 id="insights-health-title">
-              Health <span className="chip">Sample</span>
+              Health <span className="chip">{healthChip}</span>
             </h2>
-            <p className="hint">
-              Steps, sleep and active minutes from a tracker. The sparklines below are sample
-              values until a provider is connected.
+            <p className="hint" role="status" aria-live="polite">
+              {healthHint}
             </p>
           </div>
           <Button
             variant="secondary"
-            disabled
+            disabled={healthActionDisabled}
             data-action="health-connect"
+            onClick={handleHealth}
           >
             <Icon name="heart" size={16} />
-            Preview (coming soon)
+            {healthAction}
           </Button>
         </div>
 
         <div className="insights-health-grid">
-          <article className="stat-card insights-health-card" data-health="steps">
-            <div className="stat-label">
-              Steps
-              <span className="chip">Sample</span>
-            </div>
-            <div className="stat-big">7.2k</div>
-            <Sparkline data={SAMPLE_STEPS} width={220} height={44} className="insight-health-spark" />
-            <div className="stat-sub">Last 7 days · sample data</div>
-          </article>
-
-          <article className="stat-card insights-health-card" data-health="sleep">
-            <div className="stat-label">
-              Sleep
-              <span className="chip">Sample</span>
-            </div>
-            <div className="stat-big">7h 0m</div>
-            <Sparkline data={SAMPLE_SLEEP} width={220} height={44} className="insight-health-spark" />
-            <div className="stat-sub">Last 7 nights · sample data</div>
-          </article>
-
-          <article className="stat-card insights-health-card" data-health="active">
-            <div className="stat-label">
-              Active minutes
-              <span className="chip">Sample</span>
-            </div>
-            <div className="stat-big">42</div>
-            <Sparkline data={SAMPLE_ACTIVE} width={220} height={44} className="insight-health-spark" />
-            <div className="stat-sub">Last 7 days · sample data</div>
-          </article>
+          {healthSupported ? (
+            <>
+              <HealthStat
+                metric="steps"
+                label="Steps"
+                value={formatNumber(healthData?.steps)}
+                sub={healthState === 'ready' ? 'Today' : 'No data yet'}
+                chip={healthState === 'ready' ? 'Live' : undefined}
+                live={healthState === 'ready'}
+              />
+              <HealthStat
+                metric="sleep"
+                label="Sleep"
+                value={formatHours(healthData?.sleepHours)}
+                sub={healthState === 'ready' ? 'Last night' : 'No data yet'}
+                chip={healthState === 'ready' ? 'Live' : undefined}
+                live={healthState === 'ready'}
+              />
+              <HealthStat
+                metric="active"
+                label="Active calories"
+                value={
+                  healthData?.activeCalories === undefined
+                    ? '—'
+                    : `${healthData.activeCalories.toLocaleString()} kcal`
+                }
+                sub={healthState === 'ready' ? 'Today' : 'No data yet'}
+                chip={healthState === 'ready' ? 'Live' : undefined}
+                live={healthState === 'ready'}
+              />
+            </>
+          ) : (
+            <>
+              <HealthStat
+                metric="steps"
+                label="Steps"
+                value="7.2k"
+                sub="Last 7 days · sample data"
+                chip="Sample"
+                spark={SAMPLE_STEPS}
+              />
+              <HealthStat
+                metric="sleep"
+                label="Sleep"
+                value="7h 0m"
+                sub="Last 7 nights · sample data"
+                chip="Sample"
+                spark={SAMPLE_SLEEP}
+              />
+              <HealthStat
+                metric="active"
+                label="Active minutes"
+                value="42"
+                sub="Last 7 days · sample data"
+                chip="Sample"
+                spark={SAMPLE_ACTIVE}
+              />
+            </>
+          )}
         </div>
       </section>
     </div>

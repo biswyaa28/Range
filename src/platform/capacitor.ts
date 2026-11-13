@@ -274,6 +274,8 @@ export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): 
   }
 }
 
+export { capacitorHealth } from './healthConnect';
+
 export const capacitorStorage: StorageAdapter = webStorage;
 export const capacitorHaptics = new CapacitorHaptics();
 export const capacitorFileSaver = new CapacitorFileSaver();

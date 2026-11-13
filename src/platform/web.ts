@@ -248,8 +248,16 @@ export class WebHealthProviderStub implements HealthProvider {
     return false;
   }
 
+  async requestAccess(): Promise<'unavailable'> {
+    return 'unavailable';
+  }
+
   async getSummary(_dateISO: string): Promise<HealthDataSummary | null> {
     return null;
+  }
+
+  async openSettings(): Promise<void> {
+    // No health settings exist on the web.
   }
 }
 

@@ -34,6 +34,27 @@ const mockKeyboard = {
   setResizeMode: vi.fn().mockResolvedValue(undefined),
 };
 
+const mockHealth = {
+  isAvailable: vi.fn().mockResolvedValue({ available: true }),
+  checkAuthorization: vi.fn().mockResolvedValue({
+    readAuthorized: [],
+    readDenied: ['steps', 'sleep', 'calories'],
+    writeAuthorized: [],
+    writeDenied: [],
+  }),
+  requestAuthorization: vi.fn().mockResolvedValue({
+    readAuthorized: ['steps', 'sleep', 'calories'],
+    readDenied: [],
+    writeAuthorized: [],
+    writeDenied: [],
+  }),
+  queryAggregated: vi.fn().mockResolvedValue({ samples: [] }),
+  readSamples: vi.fn().mockResolvedValue({ samples: [] }),
+  openHealthConnectSettings: vi.fn().mockResolvedValue(undefined),
+};
+
+vi.mock('@capgo/capacitor-health', () => ({ Health: mockHealth }));
+
 vi.mock('@capacitor/haptics', () => ({
   Haptics: mockHaptics,
   ImpactStyle: { Heavy: 'HEAVY', Medium: 'MEDIUM', Light: 'LIGHT' },
@@ -235,6 +256,7 @@ describe('Capacitor platform layer', () => {
 
       expect(platform.isNative()).toBe(true);
       expect(platform.platformName).toBe('android');
+      expect(await platform.health.isAvailable()).toBe(true);
     });
   });
 });

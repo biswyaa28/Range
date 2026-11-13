@@ -32,12 +32,17 @@ export interface SecureStorageAdapter {
 export interface HealthDataSummary {
   steps?: number;
   sleepHours?: number;
+  activeCalories?: number;
   restingHeartRate?: number;
   updatedAt?: string;
 }
 
+export type HealthAccessState = 'granted' | 'denied' | 'unavailable';
+
 export interface HealthProvider {
   isAvailable(): Promise<boolean>;
+  requestAccess(): Promise<HealthAccessState>;
   getSummary(dateISO: string): Promise<HealthDataSummary | null>;
+  openSettings(): Promise<void>;
 }
 

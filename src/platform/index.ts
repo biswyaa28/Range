@@ -14,7 +14,7 @@ export let haptics: HapticsAdapter = webHaptics;
 export let fileSaver: FileSaver = webFileSaver;
 export const storage: StorageAdapter = webStorage;
 export let secureStorage: SecureStorageAdapter = webSecureStorage;
-export const health: HealthProvider = webHealth;
+export let health: HealthProvider = webHealth;
 
 export type PlatformName = 'web' | 'macos' | 'windows' | 'linux' | 'android';
 
@@ -41,6 +41,7 @@ export async function initializePlatform(): Promise<void> {
     haptics = module.capacitorHaptics;
     fileSaver = module.capacitorFileSaver;
     secureStorage = module.capacitorSecureStorage;
+    health = module.capacitorHealth;
     module.initBackButton();
     module.initFocusWakeLock();
     module.initAppearanceAndKeyboard();
