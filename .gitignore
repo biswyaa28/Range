@@ -8,6 +8,11 @@ yarn-error.log*
 # Dependencies
 node_modules/
 
+# Agent tooling and local state
+.agents/
+.claude/
+.hermes/
+
 # Production build
 dist/
 dist-ssr/
@@ -25,6 +30,8 @@ GoogleService-Info.plist
 # firestore.indexes.json are project config and must stay tracked.
 *-firebase-adminsdk-*.json
 *service-account*.json
+# Google Cloud OAuth client downloads for desktop sign-in.
+client_secret_*.json
 
 # Mobile & Desktop native builds
 ios/
