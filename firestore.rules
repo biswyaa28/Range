@@ -2,8 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Owner-only, collection-allowlisted, shape-checked writes. Deletes are
-    // refused because the app soft-deletes with tombstones (deleted: true).
+    // Owner-only, collection-allowlisted, shape-checked writes. Normal record
+    // deletion still uses tombstones (deleted: true); deletes are allowed so
+    // Settings can permanently erase the whole account (`deleteAllData`).
     function signedInAs(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
@@ -13,20 +14,23 @@ service cloud.firestore {
     }
 
     // Records are plain JSON written with the record id as the document id.
+    // `id` and `updatedAt` are required: the pull cursor filters on updatedAt
+    // and merge relies on the id surviving the round trip. `updatedAt` is an
+    // ISO-8601 string throughout the app (not a numeric timestamp).
     // `expireAt` is the tombstone TTL timestamp; the app writes it only on
     // soft-deleted records.
     //
     // The rules language has no byte-size property on a resource (only
     // `resource.data`), so the document size is bounded by the field count
     // here and by the byte cap the app applies before it writes
-    // (`STATE_APP_MAX_BYTES`).
+    // (`STATE_APP_MAX_BYTES`, `RECORD_MAX_BYTES`).
     function recordShape(docId) {
       let d = request.resource.data;
       return d.keys().size() <= 40
-        && (!('id' in d) || d.id == docId)
+        && ('id' in d && d.id is string && d.id == docId)
+        && ('updatedAt' in d && d.updatedAt is string && d.updatedAt.size() > 0)
         && (!('deleted' in d) || d.deleted is bool)
         && (!('deviceId' in d) || d.deviceId is string)
-        && (!('updatedAt' in d) || d.updatedAt is string)
         && (!('createdAt' in d) || d.createdAt is string)
         && (!('expireAt' in d) || d.expireAt is timestamp);
     }
@@ -57,7 +61,7 @@ service cloud.firestore {
       match /state/{docId} {
         allow read: if signedInAs(uid);
         allow create, update: if signedInAs(uid) && stateShape(docId);
-        allow delete: if false;
+        allow delete: if signedInAs(uid);
       }
 
       match /{collection}/{docId} {
@@ -65,7 +69,7 @@ service cloud.firestore {
         allow create, update: if signedInAs(uid)
           && isRecordCollection(collection)
           && recordShape(docId);
-        allow delete: if false;
+        allow delete: if signedInAs(uid) && isRecordCollection(collection);
       }
     }
   }

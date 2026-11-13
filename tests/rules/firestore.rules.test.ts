@@ -123,6 +123,20 @@ describe('firestore.rules', () => {
       );
     });
 
+    it('refuses a record without an id', async () => {
+      const { id: _id, ...withoutId } = record();
+      await assertFails(
+        setDoc(doc(clientFor(UID), 'users', UID, 'tasks', 'task-1'), withoutId),
+      );
+    });
+
+    it('refuses a record without an updatedAt', async () => {
+      const { updatedAt: _updatedAt, ...withoutStamp } = record();
+      await assertFails(
+        setDoc(doc(clientFor(UID), 'users', UID, 'tasks', 'task-1'), withoutStamp),
+      );
+    });
+
     it('refuses a record whose updatedAt is not a string', async () => {
       await assertFails(
         setDoc(
@@ -201,6 +215,14 @@ describe('firestore.rules', () => {
       );
     });
 
+    it('refuses an extra state document outside the allowlist', async () => {
+      await assertFails(
+        setDoc(doc(clientFor(UID), 'users', UID, 'state', 'secrets'), {
+          token: 'x',
+        }),
+      );
+    });
+
     it('allows the day map in the stats document', async () => {
       await assertSucceeds(
         setDoc(doc(clientFor(UID), 'users', UID, 'state', 'stats'), {
@@ -239,15 +261,27 @@ describe('firestore.rules', () => {
   });
 
   describe('deletes', () => {
-    it('refuses a hard delete of a record', async () => {
-      await assertFails(
+    it('allows the owner to hard delete a record (cloud wipe)', async () => {
+      await assertSucceeds(
         deleteDoc(doc(clientFor(UID), 'users', UID, 'tasks', 'task-1')),
       );
     });
 
-    it('refuses a hard delete of a state document', async () => {
-      await assertFails(
+    it('allows the owner to hard delete a state document', async () => {
+      await assertSucceeds(
         deleteDoc(doc(clientFor(UID), 'users', UID, 'state', 'app')),
+      );
+    });
+
+    it('refuses a delete from another user', async () => {
+      await assertFails(
+        deleteDoc(doc(clientFor(UID), 'users', OTHER_UID, 'tasks', 'task-1')),
+      );
+    });
+
+    it('refuses a delete from a signed-out client', async () => {
+      await assertFails(
+        deleteDoc(doc(anonymousClient(), 'users', UID, 'notes', 'note-1')),
       );
     });
   });
