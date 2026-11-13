@@ -54,6 +54,28 @@ cd android && ./gradlew assembleDebug
 The debug APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`.
 Use `npx cap open android` to open the project in Android Studio.
 
+### Health Connect manifest guard
+
+The health plugin ships every Health Connect read and write permission it
+supports. `android/app/src/main/AndroidManifest.xml` allowlists the three read
+scopes and removes the rest during manifest merging.
+
+After every plugin update or `npx cap sync android`, build the debug APK and
+run the guard:
+
+```sh
+npx cap sync android
+cd android && ./gradlew assembleDebug && cd ..
+npm run check:health-manifest
+```
+
+The guard reads the newest debug merged manifest under
+`android/app/build/intermediates/merged_manifest*/` (falling back to another
+variant if no debug build exists) and fails unless the health permission set
+is exactly `READ_STEPS`, `READ_SLEEP`, and `READ_ACTIVE_CALORIES_BURNED`; any
+`WRITE_*` or extra read scope is an error.
+It is not part of `npm run check` because CI does not run Gradle.
+
 ### Sideload via adb
 
 ```sh
