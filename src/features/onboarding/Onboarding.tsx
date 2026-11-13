@@ -1,17 +1,33 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { Profile, Task, TaskPriority } from '@/domain/types';
-import type { OnboardingTaskDue } from '@/domain/onboarding';
-import { ONBOARDING_STEP_COUNT, onboardingTaskDue } from '@/domain/onboarding';
-import type { BentoPresetName } from '@/domain/bentoLayout';
-import { applyBentoPreset, isBentoPresetName } from '@/domain/bentoLayout';
-import { FOCUS_MIN } from '@/domain/focusPresets';
-import { ACCENTS, resolveAccent } from '@/domain/color';
-import { mondayIndex } from '@/domain/dates';
-import { store, stampNewRecord } from '@/store';
+import type { Settings, ThemePreference } from '@/domain/settings';
+import {
+  ONBOARDING_STEP_COUNT,
+  ONBOARDING_STEPS,
+  GOAL_OPTIONS,
+  NOISE_OPTIONS,
+  ROLE_OPTIONS,
+  THEME_OPTIONS,
+  TIMETABLE_OPTIONS,
+  focusStyleOptions,
+  goalLabel,
+  focusHint,
+  onboardingDraft,
+  onboardingSave,
+  onboardingStep,
+  onboardingStepIndex,
+  roleProfileLabel,
+  validateOnboardingStep,
+} from '@/domain/onboarding';
+import type { OnboardingDraft, OnboardingStepId } from '@/domain/onboarding';
+import { patchSettings } from '@/domain/settings';
+import { ACCENTS } from '@/domain/color';
+import { defaultClock, mondayIndex } from '@/domain/dates';
+import { aiKeyStore, applySettings, settingsStore, store } from '@/store';
 import { Haptics } from '@/engines/haptics';
 import { ImportTimetableModal } from '@/features/plan/ImportTimetableModal';
 import { BlockModal } from '@/features/plan/BlockModal';
-import { HOME_CARD_SPECS } from '@/features/home/cards/registry';
+import { HOME_CARDS } from '@/features/home/cards/registry';
+import { Switch } from '@/ui/Switch';
 import './Onboarding.css';
 
 export interface OnboardingProps {
@@ -19,166 +35,98 @@ export interface OnboardingProps {
   onClose: () => void;
 }
 
-interface OnboardingDraft {
-  name: string;
-  greeting: string;
-  role: string;
-  level: string;
-  field: string;
-  wake: string;
-  sleep: string;
-  bestTime: string;
-  studyHours: number;
-  weeklyGoal: string;
-  focusStyle: string;
-  noise: string;
-  preset: string;
-  accent: string;
-}
+const APPEARANCE_STEP = onboardingStepIndex('appearance');
 
-interface FirstTaskDraft {
-  title: string;
-  due: OnboardingTaskDue;
-  prio: TaskPriority;
-}
+const RadioCards = <T extends string,>({
+  group,
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  group: string;
+  options: ReadonlyArray<{ value: T; label: string; hint?: string }>;
+  value: T;
+  onChange: (value: T) => void;
+  ariaLabel: string;
+}) => {
+  const buttons = useRef<Array<HTMLButtonElement | null>>([]);
 
-const ROLES = [
-  'School student',
-  'College student',
-  'Working professional',
-  'Self-learner',
-];
-
-const LEVELS = ['1st year', '2nd year', '3rd year', '4th year', 'Postgraduate', 'Other'];
-
-const FIELDS = [
-  'Computer Science',
-  'Engineering - other',
-  'Commerce',
-  'Arts',
-  'Science',
-  'Medicine',
-  'Design',
-  'Law',
-  'Other',
-];
-
-const BEST_TIMES = ['Morning', 'Afternoon', 'Evening', 'Late night'];
-
-const GOALS = [
-  'Finish assignments',
-  'Exam prep',
-  'Build projects',
-  'Skill learning',
-  'Stay consistent',
-];
-
-const FOCUS_STYLES: Array<{ value: string; label: string; hint: string }> = [
-  { value: 'pomodoro', label: 'Pomodoro', hint: '25 / 5' },
-  { value: 'deep', label: 'Deep work', hint: '50 / 10' },
-  { value: 'long', label: 'Long', hint: '90 / 20' },
-  { value: 'custom', label: 'Custom', hint: 'Your own' },
-];
-
-const NOISES: Array<{ value: string; label: string }> = [
-  { value: 'none', label: 'None' },
-  { value: 'white', label: 'White' },
-  { value: 'pink', label: 'Pink' },
-  { value: 'brown', label: 'Brown' },
-];
-
-const PRESETS: Array<{ value: BentoPresetName; label: string; hint: string }> = [
-  { value: 'minimal', label: 'Minimal', hint: 'Just the essentials' },
-  { value: 'balanced', label: 'Balanced', hint: 'A bit of everything' },
-  { value: 'everything', label: 'Everything', hint: 'All cards on' },
-];
-
-const DUE_OPTIONS: Array<{ value: OnboardingTaskDue; label: string }> = [
-  { value: 'today', label: 'Today' },
-  { value: 'tomorrow', label: 'Tomorrow' },
-  { value: 'week', label: 'This week' },
-  { value: 'none', label: 'No date' },
-];
-
-const PRIORITIES: Array<{ value: TaskPriority; label: string }> = [
-  { value: 'low', label: 'Low' },
-  { value: 'med', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
-
-const HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`);
-
-function draftFromProfile(profile: Profile): OnboardingDraft {
-  return {
-    name: profile.name,
-    greeting: profile.greeting === 'hey' ? 'hey' : 'auto',
-    role: profile.role,
-    level: profile.level,
-    field: profile.field,
-    wake: profile.wake || '07:00',
-    sleep: profile.sleep || '23:00',
-    bestTime: profile.bestTime,
-    studyHours: Math.max(1, Math.min(8, Number(profile.studyHours) || 3)),
-    weeklyGoal: profile.weeklyGoal,
-    focusStyle: profile.focusStyle || 'pomodoro',
-    noise: profile.noise || 'none',
-    preset: isBentoPresetName(profile.preset) ? profile.preset : 'balanced',
-    accent: profile.accent || 'mono',
+  const move = (delta: number): void => {
+    const index = options.findIndex((option) => option.value === value);
+    const from = index < 0 ? 0 : index;
+    const next = (from + delta + options.length) % options.length;
+    const option = options[next];
+    if (!option) return;
+    onChange(option.value);
+    buttons.current[next]?.focus();
   };
-}
 
-function applyAccentTokens(accentId: string, customAccent: string): void {
-  if (typeof document === 'undefined') return;
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  const applied = resolveAccent(accentId, customAccent, isDark);
-  const style = document.documentElement.style;
-  style.setProperty('--accent', applied.accent);
-  style.setProperty('--accent-text', applied.accentText);
-  style.setProperty('--on-accent', applied.onAccent);
-  style.setProperty('--focus', applied.focus);
-}
+  return (
+    <div className="cards" role="radiogroup" aria-label={ariaLabel}>
+      {options.map((option, index) => (
+        <button
+          key={option.value}
+          ref={(element) => {
+            buttons.current[index] = element;
+          }}
+          type="button"
+          className="rc"
+          role="radio"
+          aria-checked={value === option.value}
+          tabIndex={value === option.value ? 0 : -1}
+          data-k={group}
+          data-v={option.value}
+          onClick={() => onChange(option.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              move(1);
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              move(-1);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              move(-(index + 1));
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              move(options.length - index);
+            }
+          }}
+        >
+          {option.label}
+          {option.hint ? <small>{option.hint}</small> : null}
+        </button>
+      ))}
+    </div>
+  );
+};
 
-const RadioCards: React.FC<{
-  name: string;
-  options: Array<{ value: string; label: string; hint?: string }>;
-  value: string;
-  onChange: (value: string) => void;
-}> = ({ name, options, value, onChange }) => (
-  <div className="cards" role="radiogroup" aria-label={name}>
-    {options.map((option) => (
-      <button
-        key={option.value}
-        type="button"
-        className="rc"
-        role="radio"
-        aria-checked={value === option.value}
-        data-k={name}
-        data-v={option.value}
-        onClick={() => onChange(option.value)}
-      >
-        {option.label}
-        {option.hint ? <small>{option.hint}</small> : null}
-      </button>
-    ))}
-  </div>
-);
-
-const Chips: React.FC<{
-  name: string;
-  options: Array<{ value: string; label: string }>;
-  value: string;
-  onChange: (value: string) => void;
-}> = ({ name, options, value, onChange }) => (
-  <div className="chips">
+const Chips = <T extends string,>({
+  group,
+  options,
+  selected,
+  onToggle,
+  ariaLabel,
+  errorId,
+}: {
+  group: string;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  selected: readonly T[];
+  onToggle: (value: T) => void;
+  ariaLabel: string;
+  errorId?: string;
+}) => (
+  <div className="chips" role="group" aria-label={ariaLabel} aria-describedby={errorId}>
     {options.map((option) => (
       <button
         key={option.value}
         type="button"
         className="chp"
-        aria-pressed={value === option.value}
-        data-k={name}
+        aria-pressed={selected.includes(option.value)}
+        data-k={group}
         data-v={option.value}
-        onClick={() => onChange(option.value)}
+        onClick={() => onToggle(option.value)}
       >
         {option.label}
       </button>
@@ -186,74 +134,60 @@ const Chips: React.FC<{
   </div>
 );
 
-const Select: React.FC<{
-  id?: string;
-  label: string;
-  value: string;
-  placeholder?: string;
-  options: readonly string[];
-  onChange: (value: string) => void;
-}> = ({ id, label, value, placeholder, options, onChange }) => (
-  <>
-    <label className="lb" htmlFor={id}>
-      {label}
-    </label>
-    <select
-      id={id}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      aria-label={label}
-    >
-      {placeholder ? <option value="">{placeholder}</option> : null}
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
-  </>
-);
+function toggle<T>(list: readonly T[], value: T): T[] {
+  return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
+}
 
 export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
   const [draft, setDraft] = useState<OnboardingDraft | null>(null);
   const [step, setStep] = useState(0);
   const [back, setBack] = useState(false);
-  const [task, setTask] = useState<FirstTaskDraft>({
-    title: '',
-    due: 'today',
-    prio: 'med',
-  });
+  const [error, setError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const stepRef = useRef<HTMLDivElement | null>(null);
+  const accentRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const firstRunRef = useRef(true);
   const wasOnboardedRef = useRef(true);
 
+  const current = onboardingStep(step);
+  const stepId: OnboardingStepId = current.id;
+
   useEffect(() => {
     if (!open) return;
-    const profile = store.get().profile;
-    setDraft(draftFromProfile(profile));
+    const settings = settingsStore.get();
+    setDraft(onboardingDraft(settings));
     setStep(0);
     setBack(false);
-    setTask({ title: '', due: 'today', prio: 'med' });
+    setError(null);
     setImportOpen(false);
     setBlockOpen(false);
-    firstRunRef.current = !profile.onboarded;
-    wasOnboardedRef.current = profile.onboarded;
+    firstRunRef.current = !store.get().profile.onboarded;
+    wasOnboardedRef.current = store.get().profile.onboarded;
   }, [open]);
 
-  // Live accent preview while the accent step is on screen; restore after.
-  const draftAccent = draft?.accent;
+  // Only the appearance step previews the draft globally; leaving restores the
+  // saved settings, and closing after a save restores the new values.
+  const draftTheme = draft?.theme;
+  const draftAccent = draft?.accentColor;
+  const draftAccentCustom = draft?.accentCustom;
   useEffect(() => {
-    if (!open || !draftAccent) return;
-    applyAccentTokens(draftAccent, store.get().profile.customAccent);
+    if (!open || step !== APPEARANCE_STEP) return;
+    if (!draftTheme || !draftAccent || !draftAccentCustom) return;
+    const saved: Settings = settingsStore.get();
+    applySettings(
+      patchSettings(saved, {
+        theme: draftTheme,
+        accentColor: draftAccent,
+        accentCustom: draftAccentCustom,
+      }),
+    );
     return () => {
-      const profile = store.get().profile;
-      applyAccentTokens(profile.accent, profile.customAccent);
+      applySettings(settingsStore.get());
     };
-  }, [open, draftAccent]);
+  }, [open, step, draftTheme, draftAccent, draftAccentCustom]);
 
   // Lock page scroll behind the wizard.
   useEffect(() => {
@@ -265,27 +199,29 @@ export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
     };
   }, [open]);
 
-  // Move focus into each step.
+  // Move focus to the step itself so screen readers announce the heading.
   useEffect(() => {
     if (!open || !draft || importOpen || blockOpen) return;
     const timer = window.setTimeout(() => {
-      bodyRef.current
-        ?.querySelector<HTMLElement>('input, select, button')
-        ?.focus({ preventScroll: true });
+      const box = overlayRef.current?.querySelector<HTMLElement>('.onb-box');
+      if (box) box.scrollTop = 0;
+      stepRef.current?.focus({ preventScroll: true });
     }, 30);
     return () => window.clearTimeout(timer);
   }, [open, draft, step, importOpen, blockOpen]);
 
   const closeSkipping = useCallback(() => {
-    store.set((state) => {
-      state.profile.onboarded = true;
-    });
+    if (firstRunRef.current) {
+      store.set((state) => {
+        state.profile.onboarded = true;
+      });
+    }
     onClose();
   }, [onClose]);
 
   const closeWizard = useCallback(() => {
-    if (firstRunRef.current) closeSkipping();
-    else onClose();
+    if (wasOnboardedRef.current) onClose();
+    else closeSkipping();
   }, [closeSkipping, onClose]);
 
   // Escape closes; Tab is trapped. Nested plan modals keep their own keys.
@@ -324,401 +260,434 @@ export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
 
   if (!open || !draft) return null;
 
-  const updateDraft = <K extends keyof OnboardingDraft>(
-    key: K,
-    value: OnboardingDraft[K],
-  ): void => {
-    setDraft((current) => (current ? { ...current, [key]: value } : current));
+  const update = <K extends keyof OnboardingDraft>(key: K, value: OnboardingDraft[K]): void => {
+    setDraft((entry) => (entry ? { ...entry, [key]: value } : entry));
+    setError(null);
   };
 
   const go = (next: number, isBack = false): void => {
     setStep(Math.max(0, Math.min(ONBOARDING_STEP_COUNT - 1, next)));
     setBack(isBack);
+    setError(null);
   };
 
   const finish = (): void => {
-    const title = task.title.trim();
-    const due = onboardingTaskDue(task.due);
-    const accent = draft.accent;
-    const quickProfile: Partial<Profile> = {
-      name: draft.name.trim(),
-      greeting: draft.greeting === 'hey' ? 'hey' : 'auto',
-      role: draft.role,
-      level: draft.level,
-      field: draft.field,
-      wake: draft.wake,
-      sleep: draft.sleep,
-      bestTime: draft.bestTime,
-      studyHours: draft.studyHours,
-      weeklyGoal: draft.weeklyGoal,
-      focusStyle: draft.focusStyle,
-      noise: draft.noise,
-      preset: draft.preset,
-      accent,
-      onboarded: true,
-    };
+    const save = onboardingSave(draft, settingsStore.get());
+    settingsStore.set({
+      ...save.settings,
+      onboarding: {
+        ...save.settings.onboarding,
+        completedAt: defaultClock.nowISO(),
+      },
+    });
+
+    // The setup wizard collects the key but never stores it in Settings.
+    if (save.aiKey) void aiKeyStore.setKey(save.aiKey);
 
     store.set((state) => {
-      Object.assign(state.profile, quickProfile);
-      const focus = FOCUS_MIN[draft.focusStyle];
-      if (focus) {
-        state.settings.pomodoro.work = focus[0];
-        state.settings.pomodoro.break = focus[1];
+      Object.assign(state.profile, save.profile);
+      state.settings.theme = save.legacyTheme;
+      state.settings.pomodoro.work = save.pomodoro.work;
+      state.settings.pomodoro.break = save.pomodoro.break;
+      state.layout.order = save.layout.order;
+      state.layout.hidden = save.layout.hidden;
+      for (const id of save.layout.order) {
+        if (state.layout.size[id]) continue;
+        const card = HOME_CARDS.find((entry) => entry.id === id);
+        if (card) state.layout.size[id] = card.defaultSize;
       }
-      if (title) {
-        const created = stampNewRecord<Partial<Task>>(
-          {
-            title: title.slice(0, 120),
-            due,
-            priority: task.prio,
-            done: false,
-            category: '',
-          },
-          state.deviceId,
-          () => crypto.randomUUID(),
-        ) as Task;
-        state.tasks.unshift(created);
-      }
-      const preset = isBentoPresetName(draft.preset) ? draft.preset : 'balanced';
-      const layout = applyBentoPreset(preset, HOME_CARD_SPECS, ['calendar', 'timeline']);
-      state.layout.order = layout.order;
-      state.layout.size = { ...layout.size };
-      state.layout.hidden = layout.hidden;
     });
 
     Haptics.success();
     onClose();
   };
 
-  const renderStep = (): React.ReactNode => {
-    switch (step) {
-      case 0:
-        return (
-          <>
-            <h2>What should I call you?</h2>
-            <p className="sub">Used for your greeting on Home.</p>
-            <label className="lb" htmlFor="onb-name">
-              Name
-            </label>
-            <input
-              className="in"
-              id="onb-name"
-              maxLength={40}
-              autoComplete="given-name"
-              value={draft.name}
-              data-k="name"
-              onChange={(event) => updateDraft('name', event.target.value)}
-            />
-            <label className="lb">Greeting style</label>
-            <RadioCards
-              name="greeting"
-              value={draft.greeting}
-              onChange={(value) => updateDraft('greeting', value)}
-              options={[
-                { value: 'hey', label: 'Hey' },
-                { value: 'auto', label: 'Good morning / afternoon / evening' },
-              ]}
-            />
-          </>
-        );
+  const advance = (): void => {
+    const problem = validateOnboardingStep(stepId, draft);
+    if (problem) {
+      setError(problem);
+      Haptics.warning();
+      return;
+    }
+    if (step === ONBOARDING_STEP_COUNT - 1) {
+      finish();
+      return;
+    }
+    go(step + 1);
+    Haptics.tap();
+  };
 
-      case 1:
-        return (
-          <>
-            <h2>You are</h2>
-            <p className="sub">Helps tailor suggestions.</p>
-            <RadioCards
-              name="role"
-              value={draft.role}
-              onChange={(value) => updateDraft('role', value)}
-              options={ROLES.map((role) => ({ value: role, label: role }))}
-            />
-          </>
-        );
+  const skip = (): void => {
+    if (step === ONBOARDING_STEP_COUNT - 1) return;
+    go(step + 1);
+    Haptics.tap();
+  };
 
-      case 2:
-        return (
-          <>
-            <h2>Year or level</h2>
-            <p className="sub">Pick the closest match.</p>
-            <Select
-              id="onb-level"
-              label="Year / level"
-              value={draft.level}
-              placeholder="Choose…"
-              options={LEVELS}
-              onChange={(value) => updateDraft('level', value)}
-            />
-          </>
-        );
+  const chooseTimetable = (value: OnboardingDraft['timetable']): void => {
+    update('timetable', value);
+    if (value === 'upload') setImportOpen(true);
+    if (value === 'manual') setBlockOpen(true);
+  };
 
-      case 3:
-        return (
-          <>
-            <h2>Field of study</h2>
-            <p className="sub">What do you mostly work on?</p>
-            <Select
-              id="onb-field"
-              label="Field"
-              value={draft.field}
-              placeholder="Choose…"
-              options={FIELDS}
-              onChange={(value) => updateDraft('field', value)}
-            />
-          </>
-        );
+  const renderIdentity = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <label className="lb" htmlFor="onb-name">
+        Your name
+      </label>
+      <input
+        id="onb-name"
+        className="in"
+        type="text"
+        value={draft.name}
+        maxLength={40}
+        autoComplete="given-name"
+        placeholder="e.g. Ada"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? 'onb-error' : undefined}
+        onChange={(event) => update('name', event.target.value)}
+      />
+      <p className="lb">You are</p>
+      <RadioCards
+        group="role"
+        ariaLabel="Your role"
+        options={ROLE_OPTIONS}
+        value={draft.role}
+        onChange={(role) => update('role', role)}
+      />
+    </>
+  );
 
-      case 4:
-        return (
-          <>
-            <h2>Your daily rhythm</h2>
-            <p className="sub">Your Today timeline will show just these hours.</p>
-            <div className="two">
-              <div>
-                <Select
-                  id="onb-wake"
-                  label="Wake time"
-                  value={draft.wake}
-                  options={HOURS}
-                  onChange={(value) => updateDraft('wake', value)}
-                />
-              </div>
-              <div>
-                <Select
-                  id="onb-sleep"
-                  label="Sleep time"
-                  value={draft.sleep}
-                  options={HOURS}
-                  onChange={(value) => updateDraft('sleep', value)}
-                />
-              </div>
-            </div>
-            <label className="lb">I focus best in</label>
-            <Chips
-              name="bestTime"
-              value={draft.bestTime}
-              onChange={(value) => updateDraft('bestTime', value)}
-              options={BEST_TIMES.map((time) => ({ value: time, label: time }))}
-            />
-          </>
-        );
+  const renderGoals = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <Chips
+        group="goal"
+        ariaLabel="Your goals"
+        options={GOAL_OPTIONS}
+        selected={draft.goals}
+        errorId={error ? 'onb-error' : undefined}
+        onToggle={(goal) => update('goals', toggle(draft.goals, goal))}
+      />
+      <p className="onb-note">
+        {draft.goals.length === 0
+          ? 'Nothing picked yet.'
+          : `${draft.goals.length} selected · ${draft.goals.map(goalLabel).join(', ')}`}
+      </p>
+    </>
+  );
 
-      case 5:
-        return (
-          <>
-            <h2>Study goal</h2>
-            <p className="sub">Shown on your progress card.</p>
-            <label className="lb" htmlFor="onb-study-hours">
-              Hours per day
-            </label>
-            <select
-              id="onb-study-hours"
-              value={draft.studyHours}
-              onChange={(event) => updateDraft('studyHours', Number(event.target.value))}
-              aria-label="Hours per day"
-            >
-              {Array.from({ length: 8 }, (_, index) => {
-                const hours = index + 1;
-                return (
-                  <option key={hours} value={hours}>
-                    {hours === 8 ? '8+' : hours} h
-                  </option>
-                );
-              })}
-            </select>
-            <label className="lb">This week I want to</label>
-            <Chips
-              name="weeklyGoal"
-              value={draft.weeklyGoal}
-              onChange={(value) => updateDraft('weeklyGoal', value)}
-              options={GOALS.map((goal) => ({ value: goal, label: goal }))}
-            />
-          </>
-        );
+  const renderRhythm = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <div className="two">
+        <div>
+          <label className="lb" htmlFor="onb-wake">
+            Wake up
+          </label>
+          <input
+            id="onb-wake"
+            className="in"
+            type="time"
+            value={draft.wake}
+            onChange={(event) => update('wake', event.target.value)}
+          />
+        </div>
+        <div>
+          <label className="lb" htmlFor="onb-sleep">
+            Sleep
+          </label>
+          <input
+            id="onb-sleep"
+            className="in"
+            type="time"
+            value={draft.sleep}
+            onChange={(event) => update('sleep', event.target.value)}
+          />
+        </div>
+        <div>
+          <label className="lb" htmlFor="onb-peak-start">
+            Peak focus starts
+          </label>
+          <input
+            id="onb-peak-start"
+            className="in"
+            type="time"
+            value={draft.peakStart}
+            onChange={(event) => update('peakStart', event.target.value)}
+          />
+        </div>
+        <div>
+          <label className="lb" htmlFor="onb-peak-end">
+            Peak focus ends
+          </label>
+          <input
+            id="onb-peak-end"
+            className="in"
+            type="time"
+            value={draft.peakEnd}
+            onChange={(event) => update('peakEnd', event.target.value)}
+          />
+        </div>
+      </div>
+      <p className="onb-note">Home and Calendar shade this window as your focus time.</p>
+    </>
+  );
 
-      case 6:
-        return (
-          <>
-            <h2>Focus style</h2>
-            <p className="sub">Sets your timer defaults.</p>
-            <RadioCards
-              name="focusStyle"
-              value={draft.focusStyle}
-              onChange={(value) => updateDraft('focusStyle', value)}
-              options={FOCUS_STYLES}
-            />
-            <label className="lb">Ambient noise</label>
-            <Chips
-              name="noise"
-              value={draft.noise}
-              onChange={(value) => updateDraft('noise', value)}
-              options={NOISES}
-            />
-          </>
-        );
+  const renderTimetable = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <RadioCards
+        group="timetable"
+        ariaLabel="College timetable"
+        options={TIMETABLE_OPTIONS}
+        value={draft.timetable}
+        onChange={chooseTimetable}
+      />
+      <p className="onb-note">
+        {draft.timetable === 'upload'
+          ? 'Upload CSV or JSON — you can fix any row before it lands.'
+          : draft.timetable === 'manual'
+            ? 'Add classes one by one with day, time and category.'
+            : 'You can import a timetable any time from Plan.'}
+      </p>
+    </>
+  );
 
-      case 7:
-        return (
-          <>
-            <h2>College timetable</h2>
-            <p className="sub">You can always do this later in Plan.</p>
-            <div className="cards">
-              <button type="button" className="rc" data-act="import" onClick={() => setImportOpen(true)}>
-                Import JSON
-                <small>Paste or upload a timetable</small>
-              </button>
-              <button type="button" className="rc" data-act="block" onClick={() => setBlockOpen(true)}>
-                Add blocks manually
-                <small>Open the block editor</small>
-              </button>
-              <button type="button" className="rc" data-act="next" onClick={() => go(step + 1)}>
-                Skip for now
-                <small>Nothing is added</small>
-              </button>
-            </div>
-          </>
-        );
-
-      case 8:
-        return (
-          <>
-            <h2>Home layout</h2>
-            <p className="sub">Choose a starting point. You can change it later.</p>
-            <RadioCards
-              name="preset"
-              value={draft.preset}
-              onChange={(value) => updateDraft('preset', value)}
-              options={PRESETS}
-            />
-          </>
-        );
-
-      case 9:
-        return (
-          <>
-            <h2>Accent color</h2>
-            <p className="sub">Applies live across the app.</p>
-            <div className="swatches" role="radiogroup" aria-label="Accent color">
-              {ACCENTS.map((accent) => {
-                const selected = draft.accent === accent.id;
-                return (
-                  <button
-                    key={accent.id}
-                    type="button"
-                    className={`swatch${selected ? ' on' : ''}`}
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={accent.label}
-                    title={accent.label}
-                    data-k="accent"
-                    data-v={accent.id}
-                    style={
-                      {
-                        '--sw': accent.hex ?? 'linear-gradient(135deg,#fff 50%,#000 50%)',
-                      } as React.CSSProperties
-                    }
-                    onClick={() => updateDraft('accent', accent.id)}
-                  />
-                );
-              })}
-            </div>
-            <p className="sub" style={{ marginTop: 16, marginBottom: 0 }}>
-              Preview:{' '}
-              <a href="#" style={{ color: 'var(--accent-text)' }} onClick={(event) => event.preventDefault()}>
-                a link
-              </a>{' '}
-              ·{' '}
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '4px 12px',
-                  borderRadius: 99,
-                  background: 'var(--accent)',
-                  color: 'var(--on-accent)',
-                  fontSize: 12,
-                }}
-              >
-                Primary
-              </span>
-            </p>
-          </>
-        );
-
-      case 10:
-        return (
-          <>
-            <h2>Your first task</h2>
-            <p className="sub">Optional. Creates a real task.</p>
-            <label className="lb" htmlFor="onb-task">
-              Task
-            </label>
-            <input
-              className="in"
-              id="onb-task"
-              maxLength={120}
-              value={task.title}
-              onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))}
-            />
-            <label className="lb" htmlFor="onb-task-due">
-              Due
-            </label>
-            <select
-              id="onb-task-due"
-              value={task.due}
-              onChange={(event) =>
-                setTask((current) => ({
-                  ...current,
-                  due: event.target.value as OnboardingTaskDue,
-                }))
+  const renderAppearance = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <div className="onb-preview" aria-hidden="true">
+        <span className="onb-preview-dot" />
+        <span className="onb-preview-title">Good morning</span>
+        <span className="onb-preview-pill">Primary</span>
+      </div>
+      <p className="lb" id="onb-theme-label">
+        Theme
+      </p>
+      <RadioCards
+        group="theme"
+        ariaLabel="Theme"
+        options={THEME_OPTIONS}
+        value={draft.theme}
+        onChange={(theme: ThemePreference) => update('theme', theme)}
+      />
+      <p className="lb" id="onb-accent-label">
+        Accent colour
+      </p>
+      <div className="swatches onb-swatches" role="radiogroup" aria-labelledby="onb-accent-label">
+        {ACCENTS.map((accent, index) => (
+          <button
+            key={accent.id}
+            ref={(element) => {
+              accentRefs.current[index] = element;
+            }}
+            type="button"
+            className={`swatch${draft.accentColor === accent.id ? ' on' : ''}`}
+            role="radio"
+            aria-checked={draft.accentColor === accent.id}
+            aria-label={accent.label}
+            title={accent.label}
+            tabIndex={draft.accentColor === accent.id ? 0 : -1}
+            data-k="accent"
+            data-v={accent.id}
+            style={
+              {
+                '--sw': accent.hex ?? 'linear-gradient(135deg,#fff 50%,#000 50%)',
+              } as React.CSSProperties
+            }
+            onClick={() => update('accentColor', accent.id as OnboardingDraft['accentColor'])}
+            onKeyDown={(event) => {
+              if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
+                return;
               }
-              aria-label="Due"
-            >
-              {DUE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <label className="lb">Priority</label>
-            <div className="chips">
-              {PRIORITIES.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className="chp"
-                  aria-pressed={task.prio === option.value}
-                  onClick={() => setTask((current) => ({ ...current, prio: option.value }))}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </>
-        );
+              event.preventDefault();
+              const delta =
+                event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+              const from = Math.max(
+                0,
+                ACCENTS.findIndex((entry) => entry.id === draft.accentColor),
+              );
+              const next = (from + delta + ACCENTS.length) % ACCENTS.length;
+              const selected = ACCENTS[next];
+              if (!selected) return;
+              update('accentColor', selected.id as OnboardingDraft['accentColor']);
+              accentRefs.current[next]?.focus();
+            }}
+          />
+        ))}
+        <label className={`swatch custom${draft.accentColor === 'custom' ? ' on' : ''}`}>
+          <input
+            id="onb-accent-custom"
+            type="color"
+            aria-label="Custom accent colour"
+            value={draft.accentCustom}
+            onChange={(event) => {
+              update('accentCustom', event.target.value);
+              update('accentColor', 'custom');
+            }}
+          />
+        </label>
+      </div>
+    </>
+  );
 
+  const renderWidgets = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <div className="onb-widgets" role="group" aria-label="Home cards">
+        {HOME_CARDS.map((card) => {
+          const on = draft.widgets.includes(card.id);
+          return (
+            <button
+              key={card.id}
+              type="button"
+              className={`onb-widget${on ? ' is-on' : ''}`}
+              aria-pressed={on}
+              data-k="widget"
+              data-v={card.id}
+              onClick={() => {
+                if (on && draft.widgets.length === 1) {
+                  setError('Keep at least one card on Home.');
+                  return;
+                }
+                update('widgets', toggle(draft.widgets, card.id));
+              }}
+            >
+              <span>{card.title}</span>
+              <small>{on ? 'Shown' : 'Hidden'}</small>
+            </button>
+          );
+        })}
+      </div>
+      <p className="onb-note">
+        {draft.widgets.length} of {HOME_CARDS.length} shown.
+      </p>
+    </>
+  );
+
+  const renderFocus = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <p className="lb" id="onb-focus-label">
+        Focus style
+      </p>
+      <RadioCards
+        group="focusStyle"
+        ariaLabel="Focus style"
+        options={focusStyleOptions()}
+        value={draft.focusStyle}
+        onChange={(style) => update('focusStyle', style)}
+      />
+      <p className="lb" id="onb-noise-label">
+        Background noise
+      </p>
+      <Chips
+        group="noise"
+        ariaLabel="Background noise"
+        options={NOISE_OPTIONS}
+        selected={[draft.noise]}
+        onToggle={(noise) => update('noise', noise)}
+      />
+      <p className="onb-note">You can fine-tune these later in Settings and Focus.</p>
+    </>
+  );
+
+  const renderAI = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <label className="lb" htmlFor="onb-ai-key">
+        API key (optional)
+      </label>
+      <input
+        id="onb-ai-key"
+        className="in"
+        type="password"
+        value={draft.aiApiKey}
+        maxLength={256}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="sk-…"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? 'onb-error' : undefined}
+        onChange={(event) => update('aiApiKey', event.target.value)}
+      />
+      <p className="onb-note">Stored only on this device. Leave blank to stay fully local.</p>
+      <div className="onb-toggle">
+        <span>
+          Let AI read my notes
+          <small>Used for context in suggestions. Off by default.</small>
+        </span>
+        <Switch
+          checked={draft.aiCanReadNotes}
+          onChange={(checked) => update('aiCanReadNotes', checked)}
+          aria-label="Let AI read your notes"
+        />
+      </div>
+    </>
+  );
+
+  const renderSummary = (): React.ReactNode => (
+    <>
+      <p className="sub">{current.subtitle}</p>
+      <dl className="onb-summary">
+        <dt>Name</dt>
+        <dd>{draft.name.trim() || '—'}</dd>
+        <dt>You are</dt>
+        <dd>{roleProfileLabel(draft.role)}</dd>
+        <dt>Goals</dt>
+        <dd>{draft.goals.length > 0 ? draft.goals.map(goalLabel).join(', ') : '—'}</dd>
+        <dt>Day</dt>
+        <dd>{`${draft.wake} – ${draft.sleep}`}</dd>
+        <dt>Peak focus</dt>
+        <dd>{`${draft.peakStart} – ${draft.peakEnd}`}</dd>
+        <dt>Timetable</dt>
+        <dd>
+          {TIMETABLE_OPTIONS.find((option) => option.value === draft.timetable)?.label ?? 'Later'}
+        </dd>
+        <dt>Theme</dt>
+        <dd>
+          {THEME_OPTIONS.find((option) => option.value === draft.theme)?.label ?? 'Auto'} ·{' '}
+          {ACCENTS.find((accent) => accent.id === draft.accentColor)?.label ?? 'Mono'}
+        </dd>
+        <dt>Home cards</dt>
+        <dd>{draft.widgets.length} shown</dd>
+        <dt>Focus</dt>
+        <dd>
+          {focusStyleOptions().find((option) => option.value === draft.focusStyle)?.label ??
+            'Pomodoro'}{' '}
+          · {focusHint(draft.focusStyle)} · noise {draft.noise}
+        </dd>
+        <dt>AI</dt>
+        <dd>
+          {draft.aiApiKey.trim() ? 'Key added' : 'Local only'}
+          {draft.aiCanReadNotes ? ' · notes allowed' : ''}
+        </dd>
+      </dl>
+    </>
+  );
+
+  const renderStep = (): React.ReactNode => {
+    switch (stepId) {
+      case 'identity':
+        return renderIdentity();
+      case 'goals':
+        return renderGoals();
+      case 'rhythm':
+        return renderRhythm();
+      case 'timetable':
+        return renderTimetable();
+      case 'appearance':
+        return renderAppearance();
+      case 'widgets':
+        return renderWidgets();
+      case 'focus':
+        return renderFocus();
+      case 'ai':
+        return renderAI();
+      case 'summary':
       default:
-        return (
-          <>
-            <h2>You’re all set</h2>
-            <p className="sub">Here’s what I saved.</p>
-            <dl>
-              <dt>Name</dt>
-              <dd>{draft.name || '—'}</dd>
-              <dt>You are</dt>
-              <dd>{draft.role || '—'}</dd>
-              <dt>Level · field</dt>
-              <dd>{`${draft.level || '—'} · ${draft.field || '—'}`}</dd>
-              <dt>Day</dt>
-              <dd>{`${draft.wake} – ${draft.sleep}`}</dd>
-              <dt>Daily goal</dt>
-              <dd>{draft.studyHours} h</dd>
-              <dt>Focus</dt>
-              <dd>{`${draft.focusStyle}, noise ${draft.noise}`}</dd>
-              <dt>Layout</dt>
-              <dd>{draft.preset}</dd>
-            </dl>
-          </>
-        );
+        return renderSummary();
     }
   };
 
@@ -742,6 +711,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
             aria-valuemin={1}
             aria-valuemax={ONBOARDING_STEP_COUNT}
             aria-valuenow={step + 1}
+            aria-valuetext={`Step ${step + 1} of ${ONBOARDING_STEP_COUNT}: ${current.label}`}
           >
             <i
               style={
@@ -759,20 +729,41 @@ export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
           </button>
         </div>
 
-        <div className="onb-body" ref={bodyRef} onKeyDown={(event) => {
-          if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
-            event.preventDefault();
-            if (last) finish();
-            else go(step + 1);
-          }
-        }}>
+        <div
+          className="onb-body"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+              if (event.target.type === 'color') return;
+              event.preventDefault();
+              advance();
+            }
+          }}
+        >
+          <div className="onb-steplabels" aria-hidden="true">
+            {ONBOARDING_STEPS.map((entry, index) => (
+              <span
+                key={entry.id}
+                className={`onb-steplabel${index <= step ? ' is-done' : ''}${
+                  index === step ? ' is-current' : ''
+                }`}
+              />
+            ))}
+          </div>
           <div
             className={`onb-step${back ? ' back' : ''}`}
             role="group"
-            aria-label={`Step ${step + 1} of ${ONBOARDING_STEP_COUNT}`}
+            aria-labelledby="onb-title"
+            tabIndex={-1}
+            ref={stepRef}
           >
+            <h2 id="onb-title">{current.title}</h2>
             {renderStep()}
           </div>
+          {error ? (
+            <p className="onb-error form-err" id="onb-error" role="alert">
+              {error}
+            </p>
+          ) : null}
         </div>
 
         <div className="onb-nav">
@@ -787,25 +778,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ open, onClose }) => {
           </button>
           <span className="sp" />
           {!last && (
-            <button type="button" className="gb" data-nav="skip" onClick={() => go(step + 1)}>
+            <button type="button" className="gb" data-nav="skip" onClick={skip}>
               Skip
             </button>
           )}
-          <button
-            type="button"
-            className="pb"
-            data-nav="next"
-            onClick={() => (last ? finish() : go(step + 1))}
-          >
-            {last ? 'Open my dashboard' : 'Next'}
+          <button type="button" className="pb" data-nav="next" onClick={advance}>
+            {last ? 'Finish setup' : 'Next'}
           </button>
         </div>
       </div>
 
-      <ImportTimetableModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-      />
+      <ImportTimetableModal open={importOpen} onClose={() => setImportOpen(false)} />
       <BlockModal
         open={blockOpen}
         onClose={() => setBlockOpen(false)}

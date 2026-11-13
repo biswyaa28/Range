@@ -6,8 +6,164 @@
   min-height: 0;
 }
 
+.onb .onb-step:focus {
+  outline: none;
+}
+
+.onb .onb-step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 8px;
+  border-radius: 12px;
+}
+
+/* Nine micro segments echo the main progress bar. */
+.onb .onb-steplabels {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.onb .onb-steplabel {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  transition: transform 0.25s var(--ease-out);
+}
+
+.onb .onb-steplabel.is-done {
+  background: color-mix(in srgb, var(--accent) 60%, var(--surface-2));
+}
+
+.onb .onb-steplabel.is-current {
+  background: var(--accent);
+  transform: scaleY(1.6);
+}
+
+.onb .onb-note {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.onb .onb-error {
+  margin-top: 12px;
+}
+
 .onb .swatches {
   margin-top: 4px;
+}
+
+.onb .onb-swatches {
+  gap: 12px;
+}
+
+.onb .onb-swatches .swatch {
+  width: 30px;
+  height: 30px;
+}
+
+/* Live appearance preview inside the wizard. */
+.onb .onb-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 6px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--card-bd);
+}
+
+.onb .onb-preview-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.onb .onb-preview-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.onb .onb-preview-pill {
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* Home card picker */
+.onb .onb-widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.onb .onb-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--card-bd);
+  color: var(--text);
+  font-size: 13.5px;
+  text-align: left;
+  transition: transform 0.15s var(--ease-out);
+}
+
+.onb .onb-widget small {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.onb .onb-widget.is-on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.onb .onb-widget.is-on small {
+  color: var(--accent-text);
+}
+
+.onb .onb-widget:active {
+  transform: scale(0.98);
+}
+
+/* Notes-access toggle row */
+.onb .onb-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--card-bd);
+  font-size: 14px;
+}
+
+.onb .onb-toggle small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.onb .onb-summary {
+  margin-top: 4px;
+}
+
+.onb .onb-summary dd {
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 520px) {
@@ -34,5 +190,25 @@
 
   .onb .onb-nav {
     flex-wrap: wrap;
+  }
+
+  .onb .onb-nav .pb {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .onb .onb-widgets {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb .onb-step {
+    animation: none;
+  }
+
+  .onb .onb-steplabel,
+  .onb .onb-widget {
+    transition: none;
   }
 }
