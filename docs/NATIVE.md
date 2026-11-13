@@ -26,6 +26,24 @@ npm run tauri:build
 This produces `src-tauri/target/release/bundle/macos/Personal OS.app` and a
 DMG in `src-tauri/target/release/bundle/dmg/`.
 
+## Backup file access
+
+Tauri v2 does not let the dialog widen the filesystem scope by itself. The
+capability in `src-tauri/capabilities/default.json` therefore grants
+`fs:allow-write-file` only for the paths the save dialog returns and for
+`$DOWNLOAD`, `$DOCUMENT` and `$DESKTOP`. There is no `$HOME` wildcard.
+
+Verify after a signed local build:
+
+1. Settings → Data → **Export JSON** and save into Downloads.
+2. Confirm the file exists, opens as valid JSON, and no "forbidden path"
+   error appears in the devtools console.
+3. Save a second export to Desktop and to Documents.
+4. Settings → Data → **Import JSON** and pick that file; the record counts
+   match before confirming.
+5. Repeat once with a path outside those three folders (for example `/tmp`)
+   and confirm the save fails with a clear error rather than silently.
+
 ## First launch
 
 Local builds are unsigned. On first launch, control-click (or right-click)
