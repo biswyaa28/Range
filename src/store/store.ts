@@ -10,6 +10,7 @@ import {
   statsCutoffISO,
 } from '@/domain/statsRetention';
 import { TOMBSTONE_TTL_DAYS } from '@/domain/tombstone';
+import { clampAppStateNotes } from '@/domain/limits';
 import type { IdGen } from '@/domain/id';
 import { defaultIdGen } from '@/domain/id';
 import { createSingletonSnapshot, diffAndStampSingletons, nextStamp, SingletonSnapshot } from './stamp';
@@ -207,6 +208,8 @@ export class PersonalStore {
     const prevDev = this.data ? this.data.deviceId : '';
     const obj = json && typeof json === 'object' && !Array.isArray(json) ? json : defaultState();
     this.data = migrateSave(obj, this.idGen, this.clock);
+    // Imports and restored saves bypass the note editor's maxLength.
+    clampAppStateNotes(this.data);
     if (prevDev) {
       this.data.deviceId = prevDev; // device identity survives imports and wipes
     }

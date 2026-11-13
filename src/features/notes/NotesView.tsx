@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Note } from '@/domain/types';
 import { fmtStamp } from '@/domain/dates';
+import { NOTE_BODY_MAX_CHARS } from '@/domain/limits';
 import { useStore, store } from '@/store';
 import { stampNewRecord, softDeleteRecord, softUndeleteRecord, touchRecord } from '@/store/stamp';
 import { Icon } from '@/ui/Icon';
@@ -187,7 +188,7 @@ export const NotesView: React.FC = () => {
   };
 
   const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
+    const val = e.target.value.slice(0, NOTE_BODY_MAX_CHARS);
     setDraftBody(val);
     triggerAutosave(draftTitle, val);
   };
@@ -409,6 +410,7 @@ export const NotesView: React.FC = () => {
               id="note-body"
               placeholder="Start writing…"
               aria-label="Note body"
+              maxLength={NOTE_BODY_MAX_CHARS}
               value={draftBody}
               onChange={handleBodyChange}
               onBlur={flushDraft}
@@ -417,6 +419,9 @@ export const NotesView: React.FC = () => {
             <div className="notes-foot">
               <span id="note-saved" className={savedBadgeShow ? 'show' : ''}>
                 Saved
+              </span>
+              <span className={draftBody.length >= NOTE_BODY_MAX_CHARS ? 'notes-limit' : undefined}>
+                {draftBody.length.toLocaleString()} / {NOTE_BODY_MAX_CHARS.toLocaleString()}
               </span>
               <span>Edited {fmtStamp(sel.updatedAt)}</span>
             </div>

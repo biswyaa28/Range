@@ -1,5 +1,5 @@
 import type { Auth } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
+import type { DocumentReference, Firestore } from 'firebase/firestore';
 import type { DayStats } from '@/domain/types';
 import type { GoogleCredential } from '@/platform/googleAuth';
 import type { FirebaseConfig } from './firebaseConfig';
@@ -10,6 +10,7 @@ import type {
   RemoteSnapshot,
   SyncAccount,
   SyncAdapter,
+  SyncDeleteOptions,
   SyncPullOptions,
   SyncPush,
   SyncPushOptions,
@@ -19,6 +20,12 @@ type AuthModule = typeof import('firebase/auth');
 type FirestoreModule = typeof import('firebase/firestore');
 
 const APP_NAME = 'personal-os-sync';
+
+/** Firestore caps a batch at 500 writes; 400 keeps headroom. */
+const DELETE_BATCH_OPS = 400;
+
+const RECORD_COLLECTIONS = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
+const STATE_DOCS = ['app', 'stats', 'preferences'] as const;
 
 export interface FirebaseAdapterOptions {
   /** Native credential source; null/omitted keeps the web popup flow. */
@@ -260,6 +267,42 @@ export class FirebaseAdapter implements SyncAdapter {
 
       await batch.commit();
       options.onChunkCommitted?.(chunk);
+    }
+  }
+
+  /**
+   * Deletes every document under `users/{uid}` in batches of 400.
+   *
+   * The rules allow owner deletes so this can run from the client; the app
+   * still soft-deletes individual records with tombstones.
+   */
+  async deleteAllData(
+    account: SyncAccount,
+    options: SyncDeleteOptions = {},
+  ): Promise<void> {
+    const { db, fs } = await this.getDb();
+    const user = fs.doc(db, 'users', account.uid);
+    const targets: DocumentReference[] = [];
+
+    for (const name of RECORD_COLLECTIONS) {
+      const snapshot = await fs.getDocs(fs.collection(user, name));
+      for (const entry of snapshot.docs) targets.push(entry.ref);
+    }
+    for (const name of STATE_DOCS) {
+      targets.push(fs.doc(user, 'state', name));
+    }
+
+    options.onProgress?.({ deleted: 0, total: targets.length });
+
+    let deleted = 0;
+    for (let index = 0; index < targets.length; index += DELETE_BATCH_OPS) {
+      const batch = fs.writeBatch(db);
+      for (const ref of targets.slice(index, index + DELETE_BATCH_OPS)) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+      deleted += targets.slice(index, index + DELETE_BATCH_OPS).length;
+      options.onProgress?.({ deleted, total: targets.length });
     }
   }
 

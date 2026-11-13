@@ -48,6 +48,25 @@ export interface SyncPullOptions {
   since?: string | null;
 }
 
+export interface DeleteProgress {
+  /** Documents deleted so far. */
+  deleted: number;
+  /** Known after the remote listing; null while it is still being counted. */
+  total: number | null;
+}
+
+export interface SyncDeleteOptions {
+  onProgress?: (progress: DeleteProgress) => void;
+}
+
+/** A record too large to push; sync skips it instead of failing the batch. */
+export interface UnsyncableRecord {
+  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+  id: string;
+  title: string;
+  bytes: number;
+}
+
 export interface SyncPushOptions {
   /**
    * Invoked after each committed batch in a multi-batch push so the engine can
@@ -75,6 +94,8 @@ export interface SyncState {
   error: string | null;
   /** Non-fatal informational notice from the last sync (e.g. trimmed stats). */
   notice?: string | null;
+  /** Records this device skipped because they exceed the size limit. */
+  unsyncable?: UnsyncableRecord[];
 }
 
 /**
@@ -93,4 +114,9 @@ export interface SyncAdapter {
   signOut(): Promise<void>;
   pull(account: SyncAccount, options?: SyncPullOptions): Promise<RemoteSnapshot>;
   push(account: SyncAccount, changes: SyncPush, options?: SyncPushOptions): Promise<void>;
+  /**
+   * Permanently removes every document this app stores for the account
+   * (record collections and `state/*`). Optional: local-only adapters omit it.
+   */
+  deleteAllData?(account: SyncAccount, options?: SyncDeleteOptions): Promise<void>;
 }

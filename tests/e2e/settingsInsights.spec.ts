@@ -116,7 +116,7 @@ test.describe('Settings desktop', () => {
 
     // Typed confirmation gate, then a full wipe.
     await page.click('[data-action="clear-data"]');
-    const clearDialog = page.getByRole('dialog', { name: 'Clear all data' });
+    const clearDialog = page.getByRole('dialog', { name: 'Clear data on this device' });
     await expect(clearDialog).toBeVisible();
     const clearConfirm = page.locator('[data-action="clear-confirm"]');
     await expect(clearConfirm).toBeDisabled();
@@ -206,7 +206,7 @@ test.describe('Settings desktop', () => {
     await page.click('[data-action="clear-data"]');
     await page.fill('#clear-confirm-input', 'clear');
     await page.click('[data-action="clear-confirm"]');
-    await expect(page.getByRole('dialog', { name: 'Clear all data' })).toBeHidden();
+    await expect(page.getByRole('dialog', { name: 'Clear data on this device' })).toBeHidden();
 
     await page.waitForTimeout(150);
     const cleared = await readSaved(page);
@@ -235,6 +235,22 @@ test.describe('Settings desktop', () => {
     await page.goto('/#settings');
     await page.click('[data-action="open-shortcuts"]');
     await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+  });
+
+  test('the device-clear modal separates local data from the cloud copy', async ({ page }) => {
+    await page.goto('/#settings');
+    await page.click('[data-action="clear-data"]');
+    const dialog = page.getByRole('dialog', { name: 'Clear data on this device' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('from this device only');
+
+    const confirm = page.locator('[data-action="clear-confirm"]');
+    await expect(confirm).toBeDisabled();
+    await page.fill('#clear-confirm-input', 'clear');
+    await expect(confirm).toBeEnabled();
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeHidden();
   });
 });
 

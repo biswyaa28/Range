@@ -5,6 +5,8 @@
 
 export const CLEAR_CONFIRM_PHRASE = 'clear';
 
+export const DELETE_CLOUD_CONFIRM_PHRASE = 'DELETE';
+
 export const BACKUP_LIST_KEYS = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
 
 export type BackupListKey = (typeof BACKUP_LIST_KEYS)[number];
@@ -63,4 +65,9 @@ export function validateBackupText(text: string): BackupValidation {
 
 export function isClearConfirmation(value: string): boolean {
   return value.trim().toLowerCase() === CLEAR_CONFIRM_PHRASE;
+}
+
+/** Case-sensitive: deleting the cloud copy is irreversible. */
+export function isDeleteCloudConfirmation(value: string): boolean {
+  return value.trim() === DELETE_CLOUD_CONFIRM_PHRASE;
 }

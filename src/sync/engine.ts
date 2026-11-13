@@ -3,7 +3,7 @@ import { defaultClock, todayISO } from '@/domain/dates';
 import { pruneDayStatsByAge, statsCutoffISO } from '@/domain/statsRetention';
 import type { Settings } from '@/domain/settings';
 import type { BaseRecord } from '@/domain/types';
-import { EPOCH_TS } from '@/domain/types';
+import { EPOCH_TS, defaultState } from '@/domain/types';
 import { friendlyAuthError } from '@/platform/googleAuth';
 import type { StorageAdapter } from '@/platform/types';
 import type { PersonalStore } from '@/store/store';
@@ -14,14 +14,17 @@ import { SyncStateStore, pushLedgerKey } from '@/store/syncState';
 import { planPull, type PullPlan } from './pullPlan';
 import { planMissingRemoteTombstones, pruneLedger } from './reconcile';
 import type { CollectionName } from './batching';
+import { splitPushBySize } from './batching';
 import { capDayStats as capDayStatsMap } from './appPayload';
 import type {
+  DeleteProgress,
   RemoteSnapshot,
   SyncAccount,
   SyncAdapter,
   SyncPush,
   SyncState,
   SyncStatus,
+  UnsyncableRecord,
 } from './types';
 
 // A debounce keeps editing bursts from turning into one sync per keystroke.
@@ -124,7 +127,11 @@ function sameState(a: SyncState, b: SyncState): boolean {
     a.lastSyncedAt === b.lastSyncedAt &&
     a.pending === b.pending &&
     a.error === b.error &&
-    a.notice === b.notice
+    a.notice === b.notice &&
+    (a.unsyncable?.length ?? 0) === (b.unsyncable?.length ?? 0) &&
+    (a.unsyncable ?? []).every(
+      (record, index) => record.id === (b.unsyncable ?? [])[index]?.id,
+    )
   );
 }
 
@@ -185,6 +192,7 @@ export class SyncEngine {
       lastSyncedAt: cursor && cursor !== EPOCH_TS ? cursor : null,
       pending: this.computePending(),
       error: null,
+      unsyncable: [],
     };
   }
 
@@ -444,8 +452,12 @@ export class SyncEngine {
   ): Promise<void> {
     const ledger = this.syncState.readLedger();
     const pending = this.filterPushed(payload, ledger);
+    // A record over the size limit would fail its batch forever. Skip it,
+    // remember it for the UI, and keep the rest of the push moving.
+    const { sendable, skipped } = splitPushBySize(pending);
+    this.setUnsyncable(skipped);
 
-    await adapter.push(account, pending, {
+    await adapter.push(account, sendable, {
       onChunkCommitted: (chunk) => {
         for (const record of committedRecords(chunk)) {
           ledger[pushLedgerKey(record.collection, record.id)] = record.updatedAt;
@@ -453,6 +465,47 @@ export class SyncEngine {
         this.syncState.writeLedger(ledger);
       },
     });
+  }
+
+  private setUnsyncable(records: UnsyncableRecord[]): void {
+    const current = this.state.unsyncable ?? [];
+    const changed =
+      records.length !== current.length ||
+      records.some((record, index) => record.id !== current[index]?.id);
+    if (changed) this.setState({ unsyncable: records });
+  }
+
+  /**
+   * Permanently deletes the signed-in account's remote data, then clears the
+   * local copy and signs out. Throws so the caller can offer a retry.
+   */
+  async deleteCloudData(
+    onProgress?: (progress: DeleteProgress) => void,
+  ): Promise<void> {
+    const adapter = this.adapter;
+    const account = this.state.account;
+    if (!adapter || !account) throw new Error('Sign in to delete cloud data.');
+    if (!adapter.deleteAllData) throw new Error('This build cannot delete cloud data.');
+
+    this.setState({ status: 'syncing', error: null });
+    try {
+      await adapter.deleteAllData(account, { onProgress });
+    } catch (error) {
+      this.setState({
+        status: this.isOnline() ? 'error' : 'offline',
+        error: errorMessage(error),
+      });
+      throw error;
+    }
+
+    this.quiet(() => {
+      this.store.importAll(defaultState());
+      this.store.set((state) => {
+        state.clearedAt = this.clock.nowISO();
+      });
+    });
+    this.setState({ unsyncable: [] });
+    await this.signOut();
   }
 
   /**

@@ -112,9 +112,17 @@ writes put the day map in `state/stats`.
   different account does **not** upload the local dataset to that account;
   only edits made after the switch sync. The new account's existing remote
   data is pulled as usual.
-- **Clearing local data does not clear the cloud.** The next sync pulls remote
-  documents back. Sign out before clearing, or delete the user's documents in
-  the Firebase console, to erase cloud data.
+- **Clearing local data does not clear the cloud.** Settings labels this
+  "Clear data on this device" and says so: when signed in, the next sync pulls
+  the remote documents back.
+- **Deleting cloud data is a separate action.** Settings → Data → "Delete my
+  cloud data" is available only while signed in. After typing `DELETE` it
+  lists every document under `users/{uid}` (the four record collections plus
+  `state/app`, `state/stats` and `state/preferences`), deletes them in batches
+  of 400, then clears local data and signs out. Progress is shown while it
+  runs, and a failed run keeps local data and offers Retry. The security rules
+  allow owner deletes for this path; normal record deletion still writes a
+  tombstone.
 - **The AI API key never syncs.** It lives in the platform secure store, not in
   `Settings`, so no preferences document can carry it. A stray key in a remote
   document is discarded during normalization; the local secure copy survives

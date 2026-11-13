@@ -42,3 +42,7 @@
   box-shadow: var(--shadow-1);
   padding: 20px 22px;
 }
+
+.notes-limit {
+  color: var(--red-t);
+}

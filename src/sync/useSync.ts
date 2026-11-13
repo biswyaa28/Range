@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { syncEngine } from './index';
 import type { SyncEngine } from './engine';
-import type { SyncState } from './types';
+import type { DeleteProgress, SyncState } from './types';
 
 export interface UseSyncResult {
   state: SyncState;
@@ -9,6 +9,7 @@ export interface UseSyncResult {
   cancelSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
+  deleteCloudData: (onProgress?: (progress: DeleteProgress) => void) => Promise<void>;
 }
 
 /** Subscribes a component to the sync engine status and actions. */
@@ -25,5 +26,6 @@ export function useSync(engine: SyncEngine = syncEngine): UseSyncResult {
     cancelSignIn: () => engine.cancelSignIn(),
     signOut: () => engine.signOut(),
     syncNow: () => engine.syncNow(),
+    deleteCloudData: (onProgress) => engine.deleteCloudData(onProgress),
   };
 }

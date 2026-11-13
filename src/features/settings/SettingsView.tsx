@@ -34,15 +34,19 @@ import { buildDemoData } from '@/domain/demo';
 import { recomputeDayStats } from '@/domain/stats';
 import {
   CLEAR_CONFIRM_PHRASE,
+  DELETE_CLOUD_CONFIRM_PHRASE,
   isClearConfirmation,
+  isDeleteCloudConfirmation,
   validateBackupText,
 } from '@/domain/backup';
+import { countOversizedNotes } from '@/domain/limits';
+import { PRIVACY_POLICY_URL } from '@/config/links';
 import { resolveBentoLayout } from '@/domain/bentoLayout';
 import { HOME_CARD_IDS, HOME_CARD_SPECS, HOME_CARDS } from '@/features/home/cards/registry';
 import { Haptics } from '@/engines/haptics';
 import { platformName } from '@/platform';
 import { useSync } from '@/sync/useSync';
-import type { SyncState } from '@/sync/types';
+import type { DeleteProgress, SyncState } from '@/sync/types';
 import { Button } from '@/ui/Button';
 import { Icon, type IconName } from '@/ui/Icon';
 import { Modal } from '@/ui/Modal';
@@ -401,6 +405,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearText, setClearText] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -771,16 +780,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const confirmImport = (): void => {
     if (!pendingImport) return;
+    const oversized = countOversizedNotes(pendingImport);
     store.importAll(pendingImport);
     setPendingImport(null);
     Haptics.success();
-    toast.showToast('Backup imported');
+    toast.showToast(
+      oversized > 0
+        ? `Backup imported — ${oversized} note${oversized === 1 ? '' : 's'} trimmed to 200,000 characters`
+        : 'Backup imported',
+    );
   };
 
   const closeClear = useCallback(() => {
     setClearOpen(false);
     setClearText('');
   }, []);
+
+  const closeDelete = useCallback(() => {
+    if (deleting) return;
+    setDeleteOpen(false);
+    setDeleteText('');
+    setDeleteError(null);
+    setDeleteProgress(null);
+  }, [deleting]);
+
+  const runDeleteCloud = async (): Promise<void> => {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    setDeleteProgress(null);
+    try {
+      await sync.deleteCloudData(setDeleteProgress);
+      setDeleteOpen(false);
+      setDeleteText('');
+      Haptics.success();
+      toast.showToast('Cloud data deleted');
+    } catch {
+      Haptics.error();
+      setDeleteError('Could not finish deleting. Local data was kept — try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const confirmClear = (): void => {
     if (!isClearConfirmation(clearText)) return;
@@ -1452,10 +1493,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         },
         {
           id: 'data-clear',
-          title: 'Clear all data',
-          description:
-            'Permanently remove every block, task, note, deadline and day of history.',
-          keywords: 'delete wipe erase danger',
+          title: 'Clear data on this device',
+          description: sync.state.account
+            ? 'Removes blocks, tasks, notes, deadlines and history from this device only. Your cloud copy returns on the next sync.'
+            : 'Permanently removes every block, task, note, deadline and day of history from this device.',
+          keywords: 'delete wipe erase danger reset',
           danger: true,
           control: (
             <Button
@@ -1464,10 +1506,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               data-action="clear-data"
               onClick={() => setClearOpen(true)}
             >
-              Clear all data
+              Clear device data
             </Button>
           ),
         },
+        ...(sync.state.configured
+          ? [
+              {
+                id: 'data-delete-cloud',
+                title: 'Delete my cloud data',
+                description: sync.state.account
+                  ? `Permanently deletes everything under your account (${sync.state.account.email ?? 'signed in'}), then clears this device and signs out. This cannot be undone.`
+                  : 'Sign in with Google to permanently delete everything stored in your Firebase account.',
+                keywords: 'delete cloud remote firebase google account erase danger gdpr',
+                danger: true,
+                wide: true,
+                control: (
+                  <Button
+                    variant="secondary"
+                    className="settings-clear-btn"
+                    data-action="delete-cloud-data"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    Delete my cloud data
+                  </Button>
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -1622,6 +1688,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               },
             ]
           : []),
+        ...(sync.state.unsyncable && sync.state.unsyncable.length > 0
+          ? [
+              {
+                id: 'sync-unsyncable',
+                title: `${sync.state.unsyncable.length} item${sync.state.unsyncable.length === 1 ? '' : 's'} can’t sync`,
+                description: sync.state.unsyncable
+                  .map(
+                    (record) =>
+                      `${record.title} (${record.collection}/${record.id}) is ${Math.round(record.bytes / 1024)} KB — shorten it to sync.`,
+                  )
+                  .join(' '),
+                keywords: 'unsyncable too large oversized note size error',
+                wide: true,
+                control: <span className="chip">Skipped</span>,
+              },
+            ]
+          : []),
         {
           id: 'sync-privacy',
           title: 'AI API key',
@@ -1644,6 +1727,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           descriptionClassName: 'settings-about',
           keywords: 'version local privacy offline sync',
           control: <span className="chip">v{packageJson.version}</span>,
+        },
+        {
+          id: 'about-privacy',
+          title: 'Privacy policy',
+          description: 'What sync stores, what AI receives, and how to delete it.',
+          keywords: 'privacy policy data gdpr health gemini firestore legal',
+          control: (
+            <a
+              className="settings-link"
+              data-action="privacy-policy"
+              href={PRIVACY_POLICY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Read policy
+            </a>
+          ),
         },
         {
           id: 'about-storage',
@@ -1798,11 +1898,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </Modal>
 
-      <Modal open={clearOpen} onClose={closeClear} title="Clear all data">
+      <Modal open={clearOpen} onClose={closeClear} title="Clear data on this device">
         <p className="hint">
-          This permanently removes every block, task, note, deadline and day of history. It cannot
-          be undone.
+          This permanently removes every block, task, note, deadline and day of history from this
+          device only. It cannot be undone.
         </p>
+        {sync.state.account ? (
+          <p className="hint">
+            You are signed in, so your cloud copy stays in Firebase and returns on the next sync.
+            Use “Delete my cloud data” to remove it too.
+          </p>
+        ) : null}
         <div className="field">
           <label htmlFor="clear-confirm-input">
             Type <span className="mono">{CLEAR_CONFIRM_PHRASE}</span> to confirm
@@ -1826,7 +1932,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             disabled={!isClearConfirmation(clearText)}
             onClick={confirmClear}
           >
-            Clear everything
+            Clear device data
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteOpen} onClose={closeDelete} title="Delete my cloud data">
+        <p className="hint">
+          This permanently deletes every block, task, note, deadline, app state document and saved
+          preference in your Firebase account. It then clears this device and signs you out. This
+          cannot be undone.
+        </p>
+        {sync.state.account ? null : (
+          <p className="hint">You are signed out. Sign in with Google to delete your cloud data.</p>
+        )}
+        <div className="field">
+          <label htmlFor="delete-cloud-input">
+            Type <span className="mono">{DELETE_CLOUD_CONFIRM_PHRASE}</span> to confirm
+          </label>
+          <input
+            id="delete-cloud-input"
+            className="settings-input"
+            type="text"
+            autoComplete="off"
+            value={deleteText}
+            disabled={deleting}
+            onChange={(event) => setDeleteText(event.target.value)}
+          />
+        </div>
+        {deleteProgress ? (
+          <p className="hint" role="status">
+            {deleteProgress.total === null
+              ? `Deleted ${deleteProgress.deleted} documents…`
+              : `Deleted ${deleteProgress.deleted} of ${deleteProgress.total} documents…`}
+          </p>
+        ) : null}
+        {deleteError ? (
+          <p className="hint settings-sync-error" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
+        <div className="row end">
+          <Button variant="ghost" onClick={closeDelete} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            data-action="delete-cloud-confirm"
+            disabled={
+              !isDeleteCloudConfirmation(deleteText) || !sync.state.account || deleting
+            }
+            onClick={() => void runDeleteCloud()}
+          >
+            {deleting ? 'Deleting…' : deleteError ? 'Retry' : 'Delete permanently'}
           </Button>
         </div>
       </Modal>

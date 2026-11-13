@@ -1,5 +1,6 @@
+import { RECORD_MAX_BYTES } from '@/domain/limits';
 import type { BaseRecord } from '@/domain/types';
-import type { SyncPush } from './types';
+import type { SyncPush, UnsyncableRecord } from './types';
 
 export type CollectionName = 'blocks' | 'tasks' | 'notes' | 'deadlines';
 
@@ -117,6 +118,58 @@ export function planPushBatches(
 
   flush();
   return batches;
+}
+
+export interface SizedPush {
+  sendable: SyncPush;
+  skipped: UnsyncableRecord[];
+}
+
+/** UTF-8 byte length of a record once serialized for Firestore. */
+export function recordBytes(record: unknown): number {
+  const json = JSON.stringify(record) ?? '';
+  if (typeof TextEncoder === 'undefined') return json.length;
+  return new TextEncoder().encode(json).length;
+}
+
+function recordTitle(record: unknown, id: string): string {
+  if (record && typeof record === 'object') {
+    const title = (record as Record<string, unknown>)['title'];
+    if (typeof title === 'string' && title.trim()) return title;
+  }
+  return id;
+}
+
+/**
+ * Removes records that exceed Firestore's practical document size.
+ *
+ * One oversized note would fail every batch that carries it forever, so it is
+ * dropped from the payload and reported instead. Everything else still goes.
+ */
+export function splitPushBySize(
+  payload: SyncPush,
+  maxBytes: number = RECORD_MAX_BYTES,
+): SizedPush {
+  const skipped: UnsyncableRecord[] = [];
+
+  const keep = <T extends BaseRecord>(collection: CollectionName, list: T[]): T[] =>
+    list.filter((record) => {
+      const bytes = recordBytes(record);
+      if (bytes <= maxBytes) return true;
+      skipped.push({ collection, id: record.id, title: recordTitle(record, record.id), bytes });
+      return false;
+    });
+
+  return {
+    sendable: {
+      ...payload,
+      blocks: keep('blocks', payload.blocks),
+      tasks: keep('tasks', payload.tasks),
+      notes: keep('notes', payload.notes),
+      deadlines: keep('deadlines', payload.deadlines),
+    },
+    skipped,
+  };
 }
 
 /** Every record carried by a batch, in collection order. */
