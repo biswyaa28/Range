@@ -269,7 +269,7 @@ describe('SettingsView', () => {
     renderSettings();
 
     fireEvent.click(document.querySelector('[data-action="clear-data"]') as HTMLElement);
-    const confirm = screen.getByRole('button', { name: 'Clear everything' }) as HTMLButtonElement;
+    const confirm = document.querySelector('[data-action="clear-confirm"]') as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
 
     fireEvent.change(screen.getByLabelText(/Type clear to confirm/), {

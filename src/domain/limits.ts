@@ -1,7 +1,7 @@
 import type { AppState } from './types';
 
 /**
- * A note body beyond this length is truncated. Firestore's document limit is
+ * A note body beyond this length is truncated. Firestore's per-record limit is
  * 1 MiB; this keeps one note far below it while leaving room for the record's
  * metadata and the sync envelope.
  */
