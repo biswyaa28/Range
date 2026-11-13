@@ -1,4 +1,4 @@
-# Native macOS shell
+# Native shells
 
 The desktop shell uses Tauri v2 around the same Vite/React application. Web
 storage and routes are unchanged; native exports use a macOS save dialog and
@@ -37,34 +37,36 @@ runtime, and notarize the release with Apple.
 
 ## Android
 
-The Android shell uses a Gradle-based build system. The native exports use Android storage and the native haptic command.
+The Android shell uses Capacitor (not Tauri). Native exports use Android
+storage and the native haptic command.
 
 ### Build instructions
 
-Install Node 20+, JDK 11+, and Android Studio, then run:
+Install Node 20+, JDK 21+, and Android Studio, then run:
 
 ```sh
 npm install
-npm run tauri:android:dev
+npm run build
+npx cap sync android
+cd android && ./gradlew assembleDebug
 ```
+
+The debug APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`.
+Use `npx cap open android` to open the project in Android Studio.
 
 ### Sideload via adb
 
-Build the signed APK with:
-
 ```sh
-npm run tauri:android:build
+adb install android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-This produces `src-tauri/target/release/bundle/android/app-release.apk`. Transfer the APK to your device and install via ADB:
-
-```sh
-adb install src-tauri/target/release/bundle/android/app-release.apk
-```
+Google sign-in needs `android/app/google-services.json` and a registered
+signing SHA-1; see [`AUTH.md`](AUTH.md).
 
 ### The GitHub-504 Gradle workaround
 
-To resolve the GitHub-504 error during Gradle sync, add the following to `android/app/gradle.properties`:
+To resolve the GitHub-504 error during Gradle sync, add the following to
+`android/app/gradle.properties`:
 
 ```
 org.gradle.jvmargs=-Xmx4096m

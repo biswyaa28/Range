@@ -39,15 +39,27 @@ the loopback listener is open. The flow also times out after 120 seconds.
 ## Android
 
 1. Firebase console → project settings → **Your apps → Android**, package
-   `com.biswyaa.personalos`, and download `google-services.json`. Put it in
-   `android/app/` (git-ignored). Without it the app builds but Google sign-in
-   fails at runtime.
-2. Register the signing SHA-1 (debug and release) on that Android app, then
-   re-download `google-services.json`:
-   `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`
-3. Enable **Google** in Authentication → Sign-in method.
-4. `npx cap sync android && cd android && ./gradlew assembleDebug`.
-5. Sign-out calls the native plugin `signOut()` and then the Firebase SDK, so
+   `com.biswyaa.personalos`. Add the signing fingerprints before downloading
+   `google-services.json`.
+2. Read the debug fingerprint (Android Studio creates this keystore on the
+   first build):
+   ```sh
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey \
+     -storepass android -keypass android
+   ```
+3. Read the release/upload fingerprint (skip until you have a release key):
+   ```sh
+   keytool -list -v -keystore /path/to/release.keystore -alias <alias>
+   ```
+4. Copy the SHA-1 (and SHA-256 when Play App Signing is enabled) into Firebase
+   console → **Project settings → Your apps → Android → Add fingerprint**.
+5. Download `google-services.json` and put it in `android/app/` (git-ignored).
+   Re-download it after adding a fingerprint: existing files do not pick up new
+   fingerprints. Without the file the app builds but Google sign-in fails at
+   runtime.
+6. Enable **Google** in Authentication → Sign-in method.
+7. `npx cap sync android && cd android && ./gradlew assembleDebug`.
+8. Sign-out calls the native plugin `signOut()` and then the Firebase SDK, so
    the account picker starts clean next time. The app restores the Firebase
    session on relaunch through `onAuthStateChanged`.
 

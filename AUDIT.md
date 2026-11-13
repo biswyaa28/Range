@@ -14,8 +14,8 @@ Med = real defect with a workaround; Low = hardening / polish.
 | SEC-02 | Android | High | `android/app/src/main/AndroidManifest.xml:5` | `allowBackup="true"` uploads notes/tasks and the Capacitor secure-storage token to Google cloud backup / `adb backup`. | `allowBackup="false"` + explicit `usesCleartextTraffic="false"`. | Fixed |
 | SEC-03 | Firestore | High | `firestore.rules:6` | Wildcard `{document=**}` with auth-only check: no collection allowlist, no field or size validation, any depth writable. | Explicit collection matches, per-doc key/type/size guards, deny root and unknown depth. | Fixed |
 | SEC-04 | AI | High | `src/engines/llm/readTools.ts:27` | Note text can contain `</untrusted-local-data>` and escape the data fence, turning a synced note into instructions. | Strip fence tokens from all untrusted text before fenced output. | Fixed |
-| SEC-05 | Auth | High | `src/sync/firebaseAdapter.ts:93` | Desktop shells use `signInWithPopup`; WKWebView cannot complete a Firebase popup, so Google sign-in fails on macOS. | Requires a desktop OAuth client (PKCE + loopback) — needs console setup. | Needs me |
-| SEC-06 | Auth | High | `android/app/build.gradle:56` | No `google-services.json`; Android Google sign-in cannot run until the Firebase app config is added. | Add the file from Firebase console (git-ignored by design). | Needs me |
+| SEC-05 | Auth | High | `src/sync/firebaseAdapter.ts:93` | Desktop shells use `signInWithPopup`; WKWebView cannot complete a Firebase popup, so Google sign-in fails on macOS. | Desktop sign-in now runs a Rust PKCE + loopback flow (`google_sign_in`) and exchanges the credential with the Firebase JS SDK; the popup path only runs on the web. | Fixed |
+| SEC-06 | Auth | High | `android/app/build.gradle:56` | No `google-services.json`; Android Google sign-in cannot run until the Firebase app config is added. | `android/app/google-services.json` is present (git-ignored) with the debug SHA-1 registered. | Fixed |
 | SEC-07 | Secrets | Low | `.gitignore:24` | `*firebase*.json` also ignores `firebase.json` and `firestore.indexes.json`, so new config is silently untracked. | Narrow the glob to admin-SDK credentials only. | Fixed |
 | SEC-08 | Deps | Low | `package.json` | `npm audit`: 6 high, all transitive `@grpc/grpc-js` under `firebase`/`firestore-compat`; no fix without a breaking downgrade. | Not fixable without downgrade. | Won't fix |
 | SEC-09 | Tauri | Med | `src-tauri/capabilities/default.json:11` | `fs:allow-write-file` declared without a path scope; backup export may be rejected at runtime. | Verify on a signed macOS build; add the narrowest scope needed. | Needs me |
@@ -47,7 +47,7 @@ Med = real defect with a workaround; Low = hardening / polish.
 
 | Check | Result |
 | --- | --- |
-| `npm run check` (typecheck, lint, 68 vitest files / 499 tests, build, motion CSS, 64 e2e) | pass |
+| `npm run check` (typecheck, lint, 67 vitest files / 492 tests, build, motion CSS, 64 e2e) | pass |
 | Android debug APK (`npx cap sync android && ./gradlew assembleDebug`) | pass — 8.0M `app-debug.apk`; manifest verified `allowBackup=false`, `usesCleartextTraffic=false` |
 | macOS Rust (`cargo check` in `src-tauri`) | pass |
 | macOS `tauri build` | blocked: no full Xcode on this machine (`xcode-select` → CommandLineTools) |
@@ -94,4 +94,3 @@ Med = real defect with a workaround; Low = hardening / polish.
 5. Android hardware back: closes the chat sheet, palette, focus mode, then a route, then minimizes the app.
 6. Haptics: toggle switches, task completion and timer end buzz on a physical device (emulators have no motor).
 7. macOS: traffic lights do not overlap the nav bar; drag any empty top-bar area moves the window.
-8. Firestore emulator: `firebase emulators:exec --only firestore "npm run test"` once rules tests exist.

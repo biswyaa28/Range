@@ -16,7 +16,7 @@ Range/
     ├── platform/              # Device hardware abstractions (Haptics, FileSaver, Storage, Health)
     ├── engines/               # Headless logic (Audio synthesis, Pomodoro ticker, Spring solver)
     ├── sync/                  # LWW conflict resolution, tombstone sync, device cursors
-    ├── integrations/          # Timetable parsers, JSON import/export adapters
+    ├── integrations/          # README-only placeholder (no runtime code yet)
     ├── features/              # Modular screen views (lazy-loaded by the shell)
     │   ├── home/              # Bento dashboard, today timeline, quick capture
     │   ├── plan/              # Weekly calendar & schedule blocks
