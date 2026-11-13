@@ -1,7 +1,7 @@
 # Domain Layer
 
 ## Purpose
-Contains pure TypeScript business models, entities, and core types representing the Personal OS domain.
+Contains pure TypeScript business models, entities, core types, and preference schemas/migrations representing the Personal OS domain.
 
 ## Rules
 - Pure TypeScript only.

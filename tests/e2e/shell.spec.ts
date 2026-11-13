@@ -61,11 +61,40 @@ test.describe('App Shell Desktop', () => {
     const accentVar = await page.evaluate(() => {
       return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     });
-    expect(accentVar.toLowerCase()).toBe('#0a84ff');
+    expect(accentVar.toLowerCase()).toBe('#0a84ff');    expect(consoleErrors).toHaveLength(0);
+  });
 
-    expect(consoleErrors).toHaveLength(0);
+  test('deep links keep breadcrumbs and sub-tabs in step', async ({ page }) => {
+    await page.goto('/#deadlines');
+    await expect(page.locator('.crumb')).toContainText('Deadlines');
+    await expect(page.locator('.view-head h1')).toHaveText('Deadlines');
+
+    await page.goto('/#prompter');
+    await expect(page.locator('.crumb')).toContainText('Prompter');
+    await expect(page.getByRole('radio', { name: 'Prompter' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+
+    // Switching panels updates the hash so refresh and Back agree with the UI.
+    await page.getByRole('radio', { name: 'Pomodoro' }).click();
+    await expect(page).toHaveURL(/#focus$/);
+    await expect(page.locator('.crumb')).toContainText('Pomodoro & sounds');
+
+    await page.goto('/#plan');
+    await page.getByRole('radio', { name: 'Deadlines' }).click();
+    await expect(page).toHaveURL(/#deadlines$/);
+    await expect(page.locator('.crumb')).toContainText('Deadlines');
+
+    // Legacy number shortcuts land on the matching sub-tab.
+    await page.goto('/#home');
+    await page.keyboard.press('5');
+    await expect(page).toHaveURL(/#deadlines$/);
+    await page.keyboard.press('8');
+    await expect(page).toHaveURL(/#prompter$/);
   });
 });
+
 
 test.describe('App Shell Mobile', () => {
   test.beforeEach(async ({ page }) => {

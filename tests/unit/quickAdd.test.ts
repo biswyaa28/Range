@@ -122,7 +122,29 @@ describe('domain quickAdd NLP parser', () => {
     }
   });
 
-  it('13. parses combined task with priority and tomorrow', () => {
+  it('13. treats an explicit "block:" marker without a time as a block', () => {
+    // Built from local parts so the next-full-hour default is timezone-proof.
+    const localClock = new FixedClock(new Date(2026, 3, 13, 10, 0, 0));
+    const res = parseQuickAdd('block: Read a chapter', localClock);
+    expect(res.kind).toBe('block');
+    if (res.kind === 'block') {
+      expect(res.title).toBe('Read a chapter');
+      expect(res.start).toBe('11:00');
+      expect(res.end).toBe('12:00');
+      expect(res.day).toBe(0);
+    }
+  });
+
+  it('14. keeps the day keyword on an explicit block marker', () => {
+    const res = parseQuickAdd('block: Gym tomorrow', clock);
+    expect(res.kind).toBe('block');
+    if (res.kind === 'block') {
+      expect(res.title).toBe('Gym');
+      expect(res.day).toBe(1);
+    }
+  });
+
+  it('15. parses combined task with priority and tomorrow', () => {
     const res = parseQuickAdd('Pay rent tomorrow urgent', clock);
     expect(res.kind).toBe('task');
     if (res.kind === 'task') {

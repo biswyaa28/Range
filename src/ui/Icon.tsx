@@ -27,7 +27,11 @@ export type IconName =
   | 'speaker'
   | 'download'
   | 'upload'
+  | 'cloud'
   | 'keys'
+  | 'chat'
+  | 'send'
+  | 'stop'
   | 'search'
   | 'sliders'
   | 'grip'
@@ -171,12 +175,20 @@ const SVG_PATHS: Record<IconName, React.ReactNode> = {
   ),
   download: <path d="M12 3.75v11M7.75 10.75 12 15l4.25-4.25M4.75 20.25h14.5" />,
   upload: <path d="M12 15.25v-11M7.75 8.5 12 4.25 16.25 8.5M4.75 15.5v4.75h14.5v-4.75" />,
+  cloud: (
+    <path d="M7.1 18.5h9.6a4.15 4.15 0 0 0 .45-8.27 5.6 5.6 0 0 0-10.7-1.1A3.85 3.85 0 0 0 7.1 18.5Z" />
+  ),
   keys: (
     <>
       <rect x="3.25" y="6.75" width="17.5" height="10.5" rx="2.5" />
       <path d="M6.5 10.25h.8M10 10.25h.8M13.5 10.25h.8M17 10.25h.4M6.5 13.75h.8M10 13.75h.8M13.5 13.75h.8M17 13.75h.4" />
     </>
   ),
+  chat: (
+    <path d="M5.25 18.75h9.9a5.6 5.6 0 0 0 5.6-5.6V9.5a4.25 4.25 0 0 0-4.25-4.25h-9.1A4.25 4.25 0 0 0 3.15 9.5v4.1c0 1.5.78 2.82 1.96 3.58.14.1.14.28.1.42l-.55 1.74c-.13.4.25.76.64.63l2.02-.62c.6-.18 1.24-.2 1.86-.06z" />
+  ),
+  send: <path d="M20.25 3.75 3.9 10.35c-.5.2-.52.9-.03 1.12l6.2 2.8 2.8 6.2c.22.49.92.47 1.12-.03zM20.25 3.75l-9.9 9.9" />,
+  stop: <rect x="6.75" y="6.75" width="10.5" height="10.5" rx="2.4" fill="currentColor" stroke="none" />,
   search: (
     <>
       <circle cx="11" cy="11" r="6.5" />

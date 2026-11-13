@@ -3,13 +3,14 @@ import { Icon } from '@/ui/Icon';
 import { Popover } from '@/ui/Popover';
 import { Kbd } from '@/ui/Kbd';
 import type { AppRoute } from '@/hooks';
-import { useStore, store } from '@/store';
-import { fileSaver, platformName } from '@/platform';
-import { exportFilename } from '@/domain/backup';
-import { todayISO } from '@/domain/dates';
+import { exportBackup, useStore, store } from '@/store';
+import { platformName } from '@/platform';
 import { Haptics } from '@/engines';
 import type { AppState } from '@/domain/types';
 import { selectDeadlines, approveDeadline, dismissDeadline } from '@/features/deadlines/deadlinesActions';
+import { openChat } from '@/features/chat/chatBus';
+import { useSync } from '@/sync/useSync';
+import type { SyncState } from '@/sync/types';
 import { CRUMB_MAP } from './Breadcrumb';
 import './TopNav.css';
 
@@ -34,6 +35,24 @@ const DESKTOP_TABS: NavTab[] = [
   { id: 'insights', label: 'Insights' },
 ];
 
+function syncTitle(state: SyncState): string {
+  switch (state.status) {
+    case 'disabled':
+      return 'Sync is not configured — open settings';
+    case 'signed-out':
+      return 'Sync is signed out — open settings';
+    case 'syncing':
+      return 'Syncing changes';
+    case 'offline':
+      return 'Offline — changes will sync when you reconnect';
+    case 'error':
+      return `Sync error — ${state.error ?? 'try again'}`;
+    case 'idle':
+      if (state.pending) return 'Changes pending — sync now';
+      return state.lastSyncedAt ? 'Synced' : 'Sync now';
+  }
+}
+
 export const TopNav: React.FC<TopNavProps> = ({
   currentRoute,
   onNavigate,
@@ -43,6 +62,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   const profile = useStore((s) => s.profile);
   const settings = useStore((s) => s.settings);
   const deadlines = useStore(selectDeadlines);
+  const sync = useSync();
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const bellBtnRef = useRef<HTMLButtonElement>(null);
@@ -101,10 +121,8 @@ export const TopNav: React.FC<TopNavProps> = ({
   };
 
   const handleExportData = () => {
-    const data = store.exportAll();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    fileSaver.saveFile(blob, exportFilename(todayISO()));
+    // Best-effort from the avatar menu; Settings and the save warning own messaging.
+    void exportBackup().catch(() => undefined);
     setAvatarOpen(false);
   };
 
@@ -114,6 +132,15 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   const handleDismissDeadline = (id: string) => {
     dismissDeadline(id);
+  };
+
+  const handleSyncClick = () => {
+    Haptics.select();
+    if (sync.state.account) {
+      void sync.syncNow();
+    } else {
+      onNavigate('settings');
+    }
   };
 
   const crumb = CRUMB_MAP[currentRoute] ?? ['Home', 'Today'];
@@ -169,6 +196,33 @@ export const TopNav: React.FC<TopNavProps> = ({
       </span>
 
       <div className="tb-right">
+        <button
+          type="button"
+          className="ibtn chatbtn"
+          data-action="open-chat"
+          onClick={() => {
+            Haptics.tap();
+            openChat();
+          }}
+          aria-label="Open AI chat"
+          title="AI chat"
+        >
+          <Icon name="chat" size={17} />
+        </button>
+
+        <button
+          type="button"
+          className={`ibtn syncbtn${sync.state.status === 'syncing' ? ' is-syncing' : ''}`}
+          data-sync-status={sync.state.status}
+          data-sync-pending={sync.state.pending ? 'true' : 'false'}
+          onClick={handleSyncClick}
+          aria-label={syncTitle(sync.state)}
+          title={syncTitle(sync.state)}
+        >
+          <Icon name="cloud" size={17} />
+          {sync.state.pending ? <span className="sync-dot" aria-hidden="true" /> : null}
+        </button>
+
         <button
           type="button"
           className="sbtn"

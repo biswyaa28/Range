@@ -268,14 +268,12 @@ export const TasksView: React.FC = () => {
       });
   }, [liveTasks, filter]);
 
-  const quickPreview = useMemo(() => {
-    if (!quickInput.trim()) return null;
-    const parsed = parseQuickAdd(quickInput);
-    if (parsed.kind === 'task') {
-      return parsed;
-    }
-    return null;
-  }, [quickInput]);
+  const quickParsed = useMemo(
+    () => (quickInput.trim() ? parseQuickAdd(quickInput) : null),
+    [quickInput],
+  );
+  const quickPreview = quickParsed?.kind === 'task' ? quickParsed : null;
+  const quickBlock = quickParsed?.kind === 'block' ? quickParsed : null;
 
   const handleToggle = useCallback(
     (id: string, el?: HTMLElement) => {
@@ -370,6 +368,7 @@ export const TasksView: React.FC = () => {
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickPreview || !quickPreview.title) {
+      if (quickBlock) toast.showToast('Add schedule blocks from Plan');
       return;
     }
 
@@ -419,7 +418,7 @@ export const TasksView: React.FC = () => {
   return (
     <div className="view-content tasks-view">
       <div className="view-head">
-        <h1>To-Do</h1>
+        <h1>To-do</h1>
         <div className="rule" />
       </div>
 
@@ -448,6 +447,17 @@ export const TasksView: React.FC = () => {
           <span className={`chip${quickPreview.priority === 'high' ? ' red' : ''}`}>
             {prioInfo(quickPreview.priority).label}
           </span>
+        </div>
+      )}
+
+      {quickBlock && (
+        <div className="tasks-quick-preview" role="status">
+          <span>Schedule block:</span>
+          <span className="chip solid">{quickBlock.title}</span>
+          <span className="chip">
+            {quickBlock.start}–{quickBlock.end}
+          </span>
+          <span>Add it from Plan.</span>
         </div>
       )}
 
@@ -517,7 +527,7 @@ export const TasksView: React.FC = () => {
         </div>
 
         <button type="submit" className="btn green">
-          <Icon name="plus" /> ADD
+          <Icon name="plus" /> Add
         </button>
       </form>
 

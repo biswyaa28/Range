@@ -15,6 +15,7 @@ import { defaultIdGen } from '@/domain/id';
 import { createSingletonSnapshot, diffAndStampSingletons, nextStamp, SingletonSnapshot } from './stamp';
 import { migrateSave } from './migrate';
 import { mergeRemote, MergeSummary } from './merge';
+import { reportWriteFailure, reportWriteSuccess } from './persistenceStatus';
 
 export type StoreSubscriber = (state: AppState) => void;
 
@@ -121,13 +122,11 @@ export class PersonalStore {
     }
     try {
       this.storage.setItem(STORAGE_KEY, JSON.stringify(stateToWrite));
+      reportWriteSuccess('state');
     } catch {
-      try {
-        this.storage.removeItem(BACKUP_KEY);
-        this.storage.setItem(STORAGE_KEY, JSON.stringify(stateToWrite));
-      } catch {
-        // failed write
-      }
+      // Never sacrifice BACKUP_KEY here: it holds the only copy of an
+      // unreadable save. Keep the new state in memory and let the user retry.
+      reportWriteFailure('state');
     }
   }
 

@@ -397,7 +397,7 @@ export const DeadlinesView: React.FC = () => {
           </select>
         </div>
         <button type="submit" className="btn green">
-          <Icon name="plus" /> ADD
+          <Icon name="plus" /> Add
         </button>
       </form>
 

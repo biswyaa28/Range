@@ -149,7 +149,7 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
 
   return (
     <div className="pr-overlay" role="dialog" aria-modal="true" aria-label="Prompter reading mode">
-      <div className="pr-hint">SPACE PLAY/PAUSE · +/− SIZE · ←→ SPEED · M MIRROR · ESC EXIT</div>
+      <div className="pr-hint">Space play/pause · +/− size · ←→ speed · M mirror · Esc exit</div>
       <div className={`pr-stage${mirror ? ' mirror' : ''}`} ref={stageRef}>
         <div className="pr-mark left" aria-hidden="true" />
         <div className="pr-mark right" aria-hidden="true" />
@@ -158,7 +158,7 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
           ref={textRef}
           style={{ fontSize: `${size}px` }}
         >
-          {text || <span className="pr-empty">PASTE A SCRIPT FIRST — EXIT AND WRITE ONE</span>}
+          {text || <span className="pr-empty">Paste a script first — exit and write one</span>}
         </div>
       </div>
       <div className="pr-controls">

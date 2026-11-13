@@ -2,6 +2,7 @@ export * from './spring';
 export * from './haptics';
 export * from './pomodoro';
 export * from './noise';
+export * from './llm';
 
 import { PomodoroEngine } from './pomodoro';
 import { NoiseEngine } from './noise';

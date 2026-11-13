@@ -32,41 +32,48 @@ export const Popover: React.FC<PopoverProps> = ({
       const margin = 8;
       const rect = anchorEl.getBoundingClientRect();
       const popEl = popoverRef.current;
-      const popRect = popEl?.getBoundingClientRect();
+      if (!popEl) return;
+      const popRect = popEl.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const scrollX = window.scrollX;
-      const scrollY = window.scrollY;
       const popWidth = Math.min(
-        popRect?.width ?? popEl?.offsetWidth ?? 240,
+        popRect.width || popEl.offsetWidth || 240,
         viewportWidth - margin * 2,
       );
       const popHeight = Math.min(
-        popRect?.height ?? popEl?.offsetHeight ?? 180,
+        popRect.height || popEl.offsetHeight || 180,
         viewportHeight - margin * 2,
       );
 
-      let top = rect.bottom + 8 + scrollY;
+      // Work in viewport coordinates first, then translate into the space of
+      // the popover's containing block. The header is `position: sticky`, so
+      // its popovers are absolute children of a positioned ancestor; adding
+      // window.scrollY there pushes them far below the fold once the page has
+      // been scrolled.
+      let top = rect.bottom + margin;
       const wouldOverflowBottom = rect.bottom + popHeight + margin > viewportHeight;
-      const flippedTop = rect.top - popHeight - 8 + scrollY;
-      if (wouldOverflowBottom && flippedTop >= scrollY + margin) {
+      const flippedTop = rect.top - popHeight - margin;
+      if (wouldOverflowBottom && flippedTop >= margin) {
         top = flippedTop;
       }
-      top = Math.max(
-        scrollY + margin,
-        Math.min(top, scrollY + viewportHeight - popHeight - margin),
-      );
+      top = Math.max(margin, Math.min(top, viewportHeight - popHeight - margin));
 
-      let left = rect.left + scrollX;
+      let left = rect.left;
       if (rect.left + popWidth + margin > viewportWidth) {
-        left = viewportWidth - popWidth - margin + scrollX;
+        left = viewportWidth - popWidth - margin;
       }
-      left = Math.max(
-        scrollX + margin,
-        Math.min(left, scrollX + viewportWidth - popWidth - margin),
-      );
+      left = Math.max(margin, Math.min(left, viewportWidth - popWidth - margin));
 
-      setCoords({ top, left });
+      const parent = popEl.offsetParent as HTMLElement | null;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        setCoords({
+          top: top - parentRect.top - parent.clientTop + parent.scrollTop,
+          left: left - parentRect.left - parent.clientLeft + parent.scrollLeft,
+        });
+      } else {
+        setCoords({ top: top + window.scrollY, left: left + window.scrollX });
+      }
     };
 
     updatePosition();

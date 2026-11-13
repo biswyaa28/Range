@@ -1,11 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PersonalStore } from '@/store/store';
+import { getPersistenceStatus, resetPersistenceStatus } from '@/store/persistenceStatus';
 import { MemoryStorage } from './memoryStorage';
 import { FixedClock } from '@/domain/dates';
 import { SequenceIdGen } from '@/domain/id';
 import { STORAGE_KEY, BACKUP_KEY } from '@/domain/types';
 import legacyV1Fixture from '../fixtures/legacy_v1_save.json';
 import legacyExportFixture from '../fixtures/legacy_export.json';
+
+class FailingStorage extends MemoryStorage {
+  failWrites = false;
+
+  override setItem(key: string, value: string): void {
+    if (this.failWrites) throw new Error('quota exceeded');
+    super.setItem(key, value);
+  }
+}
 
 describe('PersonalStore and persistence operations', () => {
   it('migrates from legacy v1 save without dropping records', () => {
@@ -272,6 +282,26 @@ describe('PersonalStore and persistence operations', () => {
 
     // Corrupt string saved to backup key
     expect(storage.getItem(BACKUP_KEY)).toBe(corruptJSON);
+  });
+
+  it('keeps the corrupt-save backup when a later write fails', () => {
+    const storage = new FailingStorage();
+    const corruptJSON = '{ still broken ]';
+    storage.setItem(STORAGE_KEY, corruptJSON);
+    const store = new PersonalStore({ storage, debounceMs: 0 });
+    expect(storage.getItem(BACKUP_KEY)).toBe(corruptJSON);
+
+    storage.failWrites = true;
+    store.set((s) => {
+      s.profile.name = 'Ada';
+    });
+
+    // The failed write is kept in memory but must never delete the backup.
+    expect(storage.getItem(BACKUP_KEY)).toBe(corruptJSON);
+    expect(store.get().profile.name).toBe('Ada');
+    expect(getPersistenceStatus().failed).toBe(true);
+
+    resetPersistenceStatus();
   });
 
   it('notifies subscribers on mutation and flush', () => {

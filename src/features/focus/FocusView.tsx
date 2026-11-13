@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { NoiseType } from '@/engines';
 import { MAX_BREAK_MIN, MAX_WORK_MIN, MIN_BREAK_MIN, MIN_WORK_MIN } from '@/engines';
 import { fmtMS, todayISO } from '@/domain/dates';
@@ -12,6 +12,12 @@ import { openFocusMode } from './focusModeBus';
 import { PrompterPanel } from './PrompterPanel';
 
 type FocusTab = 'pomodoro' | 'sounds' | 'prompter';
+
+function tabFromHash(): FocusTab {
+  if (typeof window === 'undefined') return 'pomodoro';
+  const hash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+  return hash === 'prompter' ? 'prompter' : 'pomodoro';
+}
 
 function rangeStyle(value: number): React.CSSProperties {
   const pct = Math.max(0, Math.min(100, value));
@@ -286,7 +292,25 @@ const SoundsControls: React.FC = () => {
 };
 
 export const FocusView: React.FC = () => {
-  const [tab, setTab] = useState<FocusTab>('pomodoro');
+  const [tab, setTab] = useState<FocusTab>(tabFromHash);
+
+  // Deep links and the back button drive the visible panel.
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+      if (hash === 'prompter') setTab('prompter');
+      else if (hash === 'focus') setTab((current) => (current === 'prompter' ? 'pomodoro' : current));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Keep the hash and breadcrumb in step with the visible panel.
+  const selectTab = (next: FocusTab): void => {
+    setTab(next);
+    const target = next === 'prompter' ? '#prompter' : '#focus';
+    if (window.location.hash !== target) window.location.hash = target;
+  };
 
   return (
     <div className="view-content">
@@ -302,7 +326,7 @@ export const FocusView: React.FC = () => {
       <div style={{ marginBottom: 18 }}>
         <Segmented<FocusTab>
           value={tab}
-          onChange={setTab}
+          onChange={selectTab}
           options={[
             { value: 'pomodoro', label: 'Pomodoro' },
             { value: 'sounds', label: 'Sounds' },

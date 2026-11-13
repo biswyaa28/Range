@@ -89,6 +89,28 @@ async function toError(response: Response): Promise<LLMError> {
   return classify(message, response.status, retryAfterMs(response.headers.get('retry-after')));
 }
 
+function pause(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new LLMError('aborted', 'Request cancelled.'));
+      return;
+    }
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(new LLMError('aborted', 'Request cancelled.'));
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 async function fetchWithBackoff(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -102,18 +124,12 @@ async function fetchWithBackoff(
       if (response.ok || (response.status < 500 && response.status !== 429)) return response;
       if (attempt === maxAttempts - 1) return response;
       const retryAfter = retryAfterMs(response.headers.get('retry-after'));
-      const delay = Math.min(4000, Math.max(retryAfter ?? 0, 250 * 2 ** attempt));
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, delay);
-        signal?.addEventListener('abort', () => {
-          clearTimeout(timer);
-          reject(new LLMError('aborted', 'Request cancelled.'));
-        }, { once: true });
-      });
+      const wait = Math.min(4000, Math.max(retryAfter ?? 0, 250 * 2 ** attempt));
+      await pause(wait, signal);
     } catch (error) {
       if (signal?.aborted) throw new LLMError('aborted', 'Request cancelled.');
       if (attempt === maxAttempts - 1) throw new LLMError('network', error instanceof Error ? error.message : 'Network request failed');
-      await new Promise((resolve) => setTimeout(resolve, Math.min(4000, 250 * 2 ** attempt)));
+      await pause(Math.min(4000, 250 * 2 ** attempt), signal);
     }
   }
   throw new LLMError('network', 'Network request failed');

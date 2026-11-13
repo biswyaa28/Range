@@ -50,4 +50,23 @@ describe('Tauri platform adapters', () => {
     expect(platform.isNative()).toBe(true);
     expect(platform.platformName).toBe('macos');
   });
+
+  it('reports windows for a Tauri app on Windows', async () => {
+    // Fresh module state: the previous test already flipped `native` to true.
+    vi.resetModules();
+    Object.defineProperty(window, '__TAURI_INTERNALS__', {
+      configurable: true,
+      value: {},
+    });
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    });
+
+    const platform = await import('@/platform');
+    await platform.initializePlatform();
+
+    expect(platform.isNative()).toBe(true);
+    expect(platform.platformName).toBe('windows');
+  });
 });

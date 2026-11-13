@@ -50,7 +50,7 @@ test.describe('Settings desktop', () => {
 
     await page.goto('/#settings');
     await expectNoOverflow(page);
-    await expect(page.locator('.settings-about').first()).toContainText('100% local');
+    await expect(page.locator('.settings-about').first()).toContainText('Local-first');
     await expect(page.locator('.settings-about').first()).toContainText('v0.1.0');
 
     await page.click('button.seg-btn:has-text("Light")');
@@ -154,6 +154,40 @@ test.describe('Settings desktop', () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
+  test('searches settings and reorders Home widgets', async ({ page }) => {
+    const consoleErrors = collectConsoleErrors(page);
+
+    await page.goto('/#settings');
+    const search = page.getByLabel('Search settings');
+    await search.fill('radius');
+    await expect(page.getByRole('slider', { name: 'Corner radius' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Notifications' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Clear search field' }).click();
+    await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
+    await expectNoOverflow(page);
+
+    const widgets = page.locator('[data-widget-id]');
+    await expect(widgets.nth(1)).toHaveAttribute('data-widget-id', 'weekly');
+    await page.getByRole('button', { name: 'Move Focus up' }).click();
+    await expect(widgets.nth(1)).toHaveAttribute('data-widget-id', 'focus');
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const raw = window.localStorage.getItem('personalOS_settings_v1');
+          if (!raw) return -1;
+          const parsed = JSON.parse(raw) as {
+            data?: { homeWidgets?: { order?: string[] } };
+          };
+          return parsed.data?.homeWidgets?.order?.indexOf('focus') ?? -1;
+        }),
+      )
+      .toBe(1);
+
+    expect(consoleErrors).toHaveLength(0);
+  });
+
   test('clear-all wipes data, records clearedAt, and first run returns on reload', async ({
     page,
   }) => {
@@ -192,7 +226,7 @@ test.describe('Settings desktop', () => {
     await expect(
       page.getByRole('dialog', { name: 'Personalize Personal OS' }),
     ).toBeVisible();
-    await expect(page.locator('.onb-count')).toHaveText('1 / 12');
+    await expect(page.locator('.onb-count')).toHaveText('1 / 9');
 
     expect(consoleErrors).toHaveLength(0);
   });

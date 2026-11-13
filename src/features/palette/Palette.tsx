@@ -11,9 +11,7 @@ import type { IconName } from '@/ui/Icon';
 import {
   DAY_FULL,
   fmtShort,
-  todayISO,
 } from '@/domain/dates';
-import { fileSaver } from '@/platform';
 import {
   isPaletteOpen,
   subscribePalette,
@@ -21,6 +19,7 @@ import {
 } from './paletteBus';
 import { fuzzyScore } from './fuzzy';
 import {
+  exportBackup,
   liveArray,
   store,
   useStore,
@@ -153,9 +152,8 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
   }, []);
 
   const exportData = useCallback(() => {
-    const json = JSON.stringify(store.exportAll(), null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    fileSaver.saveFile(blob, `personal-os-backup-${todayISO()}.json`);
+    // Palette exports are fire-and-forget; Settings and the save warning report outcomes.
+    void exportBackup().catch(() => undefined);
   }, []);
 
   const commands = useMemo<PaletteCommand[]>(

@@ -141,6 +141,23 @@ describe('TasksView', () => {
     expect(screen.queryByText('Preview:')).toBeNull();
   });
 
+  it('points block-shaped quick-add input to Plan instead of dropping it', () => {
+    renderTasksView();
+
+    const quickInput = screen.getByPlaceholderText(/Quick add a task/i);
+    fireEvent.change(quickInput, { target: { value: 'Study group 4-6pm' } });
+
+    expect(screen.getByText('Schedule block:')).toBeDefined();
+    expect(screen.getByText('Add it from Plan.')).toBeDefined();
+    expect(screen.queryByText('Preview:')).toBeNull();
+
+    fireEvent.submit(quickInput.closest('form')!);
+
+    // No task is created and the user is told where blocks live.
+    expect(store.get().tasks.some((t) => t.title === 'Study group')).toBe(false);
+    expect(screen.getByText('Add schedule blocks from Plan')).toBeDefined();
+  });
+
   it('completes/toggles a task', () => {
     renderTasksView();
 

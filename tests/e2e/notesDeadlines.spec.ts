@@ -176,10 +176,15 @@ test.describe('Notes and Deadlines Views Mobile (390px)', () => {
     await page.goto('/#notes');
 
     // No horizontal overflow
-    let hasHorizontalOverflow = await page.evaluate(() => {
-      return document.documentElement.scrollWidth > window.innerWidth;
-    });
-    expect(hasHorizontalOverflow).toBe(false);
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth > window.innerWidth,
+          ),
+        { message: 'Notes list should not overflow horizontally' },
+      )
+      .toBe(false);
 
     // 1. Create a note
     await page.click('button[data-action="note-new"]');
@@ -206,10 +211,32 @@ test.describe('Notes and Deadlines Views Mobile (390px)', () => {
     await page.waitForTimeout(250);
 
     // No horizontal overflow
-    hasHorizontalOverflow = await page.evaluate(() => {
-      return document.documentElement.scrollWidth > window.innerWidth;
+    const offenders = await page.evaluate(() => {
+      const width = window.innerWidth;
+      return Array.from(document.querySelectorAll<HTMLElement>('body *'))
+        .map((el) => ({ el, rect: el.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.right > width + 1 || rect.left < -1)
+        .slice(0, 12)
+        .map(({ el, rect }) => ({
+          tag: el.tagName,
+          cls: typeof el.className === 'string' ? el.className : '',
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          text: (el.textContent ?? '').slice(0, 80),
+        }));
     });
-    expect(hasHorizontalOverflow).toBe(false);
+    if (offenders.length) console.log('OVERFLOW', JSON.stringify(offenders, null, 2));
+
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth > window.innerWidth,
+          ),
+        { message: 'Notes list should not overflow horizontally' },
+      )
+      .toBe(false);
 
     expect(consoleErrors).toEqual([]);
   });

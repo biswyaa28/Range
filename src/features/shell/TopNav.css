@@ -345,6 +345,70 @@
   margin-top: 8px;
 }
 
+.syncbtn {
+  position: relative;
+}
+
+.syncbtn[data-sync-status='syncing'] {
+  color: var(--accent);
+}
+
+.syncbtn[data-sync-status='idle'] {
+  color: var(--green-t, #248a3d);
+}
+
+.syncbtn[data-sync-status='offline'] {
+  color: var(--orange-t, #c93400);
+}
+
+.syncbtn[data-sync-status='error'] {
+  color: var(--red-t, #d70015);
+}
+
+.syncbtn.is-syncing svg {
+  animation: sync-breathe 1.2s ease-in-out infinite;
+}
+
+.sync-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: sync-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes sync-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes sync-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .syncbtn.is-syncing svg,
+  .sync-dot {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 899px) {
   .sbtn .kbd {
     display: none;
@@ -366,6 +430,22 @@
   }
   .menu .mi.mob {
     display: flex;
+  }
+}
+
+@media (max-width: 480px) {
+  /* The icon row needs the room the wordmark used to take. */
+  .wm {
+    display: none;
+  }
+  .brand {
+    padding-right: 6px;
+  }
+  .topbar {
+    gap: 6px;
+  }
+  .tb-right {
+    gap: 4px;
   }
 }
 

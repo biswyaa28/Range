@@ -1,5 +1,5 @@
 import type { TaskPriority, BlockCategory } from './types';
-import { todayISO, addDays, mondayIndex, defaultClock, Clock } from './dates';
+import { todayISO, addDays, mondayIndex, defaultClock, fmtHM, type Clock } from './dates';
 
 export type QuickAddKind = 'task' | 'block';
 
@@ -38,6 +38,12 @@ function parseTimeStr(raw: string, defaultMeridiem?: string): string | null {
 
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/** Next full hour, so `block: read book` lands somewhere sane and editable. */
+function defaultBlockSlot(clock: Clock): { start: string; end: string } {
+  const startMin = Math.min(23 * 60, (clock.now().getHours() + 1) * 60);
+  return { start: fmtHM(startMin), end: fmtHM(startMin + 60) };
 }
 
 const WEEKDAY_NAMES: Record<string, number> = {
@@ -135,7 +141,7 @@ export function parseQuickAdd(input: string, clock: Clock = defaultClock): Quick
   // Clean remaining title
   const cleanTitle = text.replace(/\s+/g, ' ').trim();
 
-  // If start & end are present or explicitly marked block -> Block
+  // A time range (or an explicit `block:` marker) creates a block instead of a task.
   if (startHM && endHM) {
     return {
       kind: 'block',
@@ -143,6 +149,18 @@ export function parseQuickAdd(input: string, clock: Clock = defaultClock): Quick
       day: targetDay !== null ? targetDay : curDayIndex,
       start: startHM,
       end: endHM,
+      category: 'personal',
+    };
+  }
+
+  if (isExplicitBlock) {
+    const slot = defaultBlockSlot(clock);
+    return {
+      kind: 'block',
+      title: cleanTitle || 'Untitled Block',
+      day: targetDay !== null ? targetDay : curDayIndex,
+      start: slot.start,
+      end: slot.end,
       category: 'personal',
     };
   }

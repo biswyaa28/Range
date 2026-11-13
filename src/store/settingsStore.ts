@@ -16,6 +16,7 @@ import type { Clock } from '@/domain/dates';
 import { defaultClock } from '@/domain/dates';
 import type { StorageAdapter } from '@/platform/types';
 import { storage as defaultStorage } from '@/platform';
+import { reportWriteFailure, reportWriteSuccess } from './persistenceStatus';
 
 export type SettingsSubscriber = (settings: Settings) => void;
 
@@ -138,13 +139,11 @@ export class SettingsStore {
 
     try {
       this.storage.setItem(this.key, JSON.stringify(envelope));
+      reportWriteSuccess('settings');
     } catch {
-      try {
-        this.storage.removeItem(this.backupKey);
-        this.storage.setItem(this.key, JSON.stringify(envelope));
-      } catch {
-        // write failed; keep the in-memory value
-      }
+      // Never sacrifice the backup key: it holds the only copy of an
+      // unreadable save. Keep the in-memory value and try again on the next write.
+      reportWriteFailure('settings');
     }
   }
 

@@ -14,6 +14,13 @@ function tabFromHash(): PlanTab {
 export const PlanView: React.FC = () => {
   const [subTab, setSubTab] = useState<PlanTab>(tabFromHash);
 
+  // Keep the hash and breadcrumb in step with the visible tab.
+  const selectTab = (next: PlanTab): void => {
+    setSubTab(next);
+    const target = next === 'deadlines' ? '#deadlines' : '#plan';
+    if (window.location.hash !== target) window.location.hash = target;
+  };
+
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
@@ -29,7 +36,7 @@ export const PlanView: React.FC = () => {
       <div style={{ marginBottom: '14px' }}>
         <Segmented<PlanTab>
           value={subTab}
-          onChange={setSubTab}
+          onChange={selectTab}
           options={[
             { value: 'calendar', label: 'Calendar' },
             { value: 'deadlines', label: 'Deadlines' },

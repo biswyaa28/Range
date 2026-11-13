@@ -25,7 +25,7 @@ test.describe('Tasks View Desktop', () => {
     expect(hasHorizontalOverflow).toBe(false);
 
     // Verify view header
-    await expect(page.locator('.view-head h1')).toHaveText('To-Do');
+    await expect(page.locator('.view-head h1')).toHaveText('To-do');
 
     // 1. Add task via standard form
     await page.fill('#todo-title', 'Physics Assignment');

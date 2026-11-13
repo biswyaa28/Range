@@ -66,6 +66,17 @@
   }
 }
 
+/* Lift toasts above the save-failure banner so both stay readable. */
+body.storage-warning .toasts-container {
+  bottom: calc(var(--storage-warning-height, 96px) + 32px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 699px) {
+  body.storage-warning .toasts-container {
+    bottom: calc(var(--storage-warning-height, 96px) + 96px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toast {
     animation: none;

@@ -135,12 +135,13 @@ describe('Capacitor platform layer', () => {
       haptics.impact();
       expect(mockHaptics.impact).toHaveBeenLastCalledWith({ style: 'MEDIUM' });
 
+      const callsBeforeDisable = mockHaptics.impact.mock.calls.length;
       // Disabled haptics -> no impact
       mockStore.set((s) => {
         s.profile.haptics.on = false;
       });
       haptics.impact();
-      expect(mockHaptics.impact).toHaveBeenCalledTimes(2);
+      expect(mockHaptics.impact).toHaveBeenCalledTimes(callsBeforeDisable);
     });
   });
 
