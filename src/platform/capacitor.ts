@@ -13,9 +13,6 @@ import { isChatOpen, closeChat } from '@/features/chat/chatBus';
 import type { FileSaver, HapticsAdapter, StorageAdapter, SecureStorageAdapter } from './types';
 import { webStorage } from './web';
 
-// Import the Capacitor auth bridge implementation
-import { CapacitorAuthBridge as capacitorAuthBridgeImpl } from './capacitorAuthBridge';
-
 export class CapacitorHaptics implements HapticsAdapter {
   constructor(private currentStore: PersonalStore = defaultStore) {}
 
@@ -299,5 +296,3 @@ export const capacitorSecureStorage: SecureStorageAdapter = {
     }
   },
 };
-
-export const capacitorAuthBridge = new capacitorAuthBridgeImpl();

@@ -19,6 +19,16 @@ export interface StorageAdapter {
   removeItem(key: string): void;
 }
 
+/**
+ * Async key/value storage for secrets. Implementations must use the platform's
+ * protected store (Keychain, Android Keystore) and never plain web storage.
+ */
+export interface SecureStorageAdapter {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItem(key: string): Promise<void>;
+}
+
 export interface HealthDataSummary {
   steps?: number;
   sleepHours?: number;

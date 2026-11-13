@@ -1,16 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { AppRoute } from '@/hooks';
 import { useStore } from '@/store';
 import type { InsightChartItem, InsightRange } from '@/domain/insights';
 import { buildBarChart, buildInsightSummary } from '@/domain/insights';
-import { health } from '@/platform';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { Icon } from '@/ui/Icon';
 import { Segmented } from '@/ui/Segmented';
 import { Sparkline } from '@/ui/Sparkline';
-import { useToast } from '@/ui/Toast';
 import './InsightsView.css';
 
 const SAMPLE_STEPS = [4.2, 6.1, 5.3, 7.8, 6.9, 8.4, 7.2];
@@ -136,26 +134,9 @@ export interface InsightsViewProps {
 
 export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
   const state = useStore();
-  const toast = useToast();
   const [range, setRange] = useState<InsightRange>('week');
-  const [healthAvailable, setHealthAvailable] = useState(false);
 
   const summary = useMemo(() => buildInsightSummary(state, range), [state, range]);
-
-  useEffect(() => {
-    let mounted = true;
-    health
-      .isAvailable()
-      .then((available) => {
-        if (mounted) setHealthAvailable(available);
-      })
-      .catch(() => {
-        if (mounted) setHealthAvailable(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const navigate = (route: AppRoute) => {
     if (onNavigate) {
@@ -306,17 +287,11 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
           </div>
           <Button
             variant="secondary"
-            onClick={() =>
-              toast.showToast(
-                healthAvailable
-                  ? 'Health data is connected'
-                  : 'Health sync lands in the Android app. No data leaves this device.',
-              )
-            }
+            disabled
             data-action="health-connect"
           >
             <Icon name="heart" size={16} />
-            {healthAvailable ? 'Health connected' : 'Connect on Android'}
+            Preview (coming soon)
           </Button>
         </div>
 

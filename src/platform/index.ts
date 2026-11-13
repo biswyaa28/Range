@@ -1,5 +1,11 @@
-import { webHaptics, webFileSaver, webStorage, webHealth } from './web';
-import type { HapticsAdapter, FileSaver, StorageAdapter, HealthProvider } from './types';
+import { webHaptics, webFileSaver, webStorage, webSecureStorage, webHealth } from './web';
+import type {
+  FileSaver,
+  HapticsAdapter,
+  StorageAdapter,
+  SecureStorageAdapter,
+  HealthProvider,
+} from './types';
 
 export * from './types';
 
@@ -7,9 +13,12 @@ export * from './types';
 export let haptics: HapticsAdapter = webHaptics;
 export let fileSaver: FileSaver = webFileSaver;
 export const storage: StorageAdapter = webStorage;
+export let secureStorage: SecureStorageAdapter = webSecureStorage;
 export const health: HealthProvider = webHealth;
 
-export let platformName: 'web' | 'macos' | 'android' = 'web';
+export type PlatformName = 'web' | 'macos' | 'windows' | 'linux' | 'android';
+
+export let platformName: PlatformName = 'web';
 let native = false;
 
 export function isNative(): boolean {
@@ -31,6 +40,7 @@ export async function initializePlatform(): Promise<void> {
     native = true;
     haptics = module.capacitorHaptics;
     fileSaver = module.capacitorFileSaver;
+    secureStorage = module.capacitorSecureStorage;
     module.initBackButton();
     module.initFocusWakeLock();
     module.initAppearanceAndKeyboard();
@@ -43,9 +53,16 @@ export async function initializePlatform(): Promise<void> {
     const userAgent = window.navigator.userAgent;
     if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS X')) {
       platformName = 'macos';
+    } else if (userAgent.includes('Windows')) {
+      platformName = 'windows';
+    } else {
+      platformName = 'linux';
     }
     native = true;
     haptics = module.tauriHaptics;
     fileSaver = module.tauriFileSaver;
+    secureStorage = module.tauriSecureStorage;
+    // Native Google sign-in runs through googleAuth (Rust loopback flow); the
+    // Firebase SDK still owns the session.
   }
 }
