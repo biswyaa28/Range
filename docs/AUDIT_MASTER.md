@@ -26,7 +26,7 @@ All 33 `AUDIT.md` items were re-checked in code. No regressions.
 | SEC-06 (google-services) | FIXED | `android/app/google-services.json` present and git-ignored |
 | SEC-07 (gitignore globs) | FIXED | `.gitignore:22-30` narrowed |
 | SEC-08 (npm audit) | STILL OPEN | now 7 high (was 6); all transitive `@grpc/grpc-js` under `firebase` |
-| SEC-09 (fs write scope) | STILL OPEN | `src-tauri/capabilities/default.json:11` still declares `fs:allow-write-file` with no path scope |
+| SEC-09 (fs write scope) | FIXED | `src-tauri/capabilities/default.json` adds `fs:scope` for `$DOWNLOAD`/`$DOCUMENT`/`$DESKTOP` only (MAC-01) |
 | SEC-10 (FileProvider root) | WON'T FIX | unchanged Capacitor default |
 | SEC-11 (AI transcript on sign-out) | FIXED | `src/App.tsx:90-95` clears `chatStore` on uid→null |
 | SYNC-01 (deviceId tiebreak) | FIXED | `src/store/merge.ts:34` |
@@ -51,7 +51,7 @@ All 33 `AUDIT.md` items were re-checked in code. No regressions.
 
 ---
 
-## STEP 1 — commands actually run (13 Nov 2026, macOS, Node 20+, Java 17)
+## STEP 1 — commands actually run (13 Nov 2026, macOS, Node 20+; Java 17, then JDK 21)
 
 | Command | Result |
 | --- | --- |
@@ -67,14 +67,16 @@ All 33 `AUDIT.md` items were re-checked in code. No regressions.
 | `npm run check:health-manifest` | **pass** — exactly 3 read-only health permissions |
 | `npm audit` | **7 high, 0 critical** — all via `firebase` → `@firebase/firestore` → `@grpc/grpc-js` |
 | `cargo audit` | **not run** — `cargo-audit` is not installed |
-| `npm run test:rules` | **skipped** — emulator requires Java ≥21, machine has 17.0.21 |
+| `npm run test:rules` | **skipped on Java 17**; **pass on JDK 21** (32/32) after Batch 1 |
 | `tauri build` / notarization | **not run** — only Command Line Tools (`xcode-select` → `/Library/Developer/CommandLineTools`), no full Xcode |
 | Device tests (Android) | **not possible** — `adb devices` empty; no macOS `.app` build possible |
 
 **Coverage gaps:** no coverage reporter is configured (no `coverage` script, no thresholds); E2E is
 Chromium-only (no WebKit/WKWebView equivalent, no Firefox); one mobile width (390 px); Firestore
-rules suite not executed in this environment; no Android/iOS/macOS instrumentation; no performance
+rules suite initially unexecuted (now 32/32 on JDK 21); no Android/iOS/macOS instrumentation; no performance
 or battery measurement was taken (all perf notes below are static analysis only).
+
+**Batch 1 re-run (13 Nov 2026):** `npm run check` pass (unit suite green, 65/65 e2e), `cargo check` pass, `./gradlew assembleDebug` pass, `check:health-manifest` pass, rules 32/32 on JDK 21.
 
 **Skipped/flaky:** none skipped and none retried. `scripts/run-rules-tests.mjs` exits 0 on skip,
 which means CI could silently skip rules forever (see DEV-01).
@@ -105,9 +107,9 @@ which means CI could silently skip rules forever (see DEV-01).
 
 | ID | Severity | Area | File:line | Problem | Impact | Suggested fix | Effort |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| DATA-01 | High | Sync/privacy | `src/features/settings/SettingsView.tsx:785-795`, `docs/FIREBASE_SYNC.md` §6 | "Clear all data" only replaces local state; the device stays signed in and the next sync re-pulls every cloud record, and there is no in-app remote delete. | User believes data is erased; Play data-deletion policy and GDPR/DPDP expectations unmet. | Add "Delete cloud data" (sign out, delete `users/{uid}/**` via client batch or console link) and make clear-all state which copy is removed. | M |
-| DATA-02 | High | Sync/data | `src/features/notes/NotesView.tsx:409` (body has no `maxLength`), `src/sync/firebaseAdapter.ts:239` | No per-record size guard. One note >1 MiB (or imported record) makes every 500/400-op chunk fail permanently, so nothing after it syncs. | Silent sync wedge with a generic "Sync failed" message; data stays local-only. | Cap note body/record bytes client-side (e.g. 200 KB) before push, surface an actionable error, skip and quarantine oversized records. | S |
-| SEC-01 | High | Privacy/release | `android/app/src/main/res/values/strings.xml:7-8`, `docs/privacy-policy.md` | Health Connect privacy URL is `https://example.com/personal-os/privacy-policy` (own TODO on line 7) and the policy covers **only** health data, not Google account, synced notes/tasks, or Gemini requests. | Health Connect declaration and Play listing reject placeholder URLs; policy is materially incomplete. | Host the policy on an HTTPS domain, point the string and Settings at it, add sections for Firebase sync, Gemini (what is sent, BYO key), retention and deletion. | S |
+| DATA-01 ✅ Fixed | High | Sync/privacy | `src/features/settings/SettingsView.tsx:785-795`, `docs/FIREBASE_SYNC.md` §6 | "Clear all data" only replaces local state; the device stays signed in and the next sync re-pulls every cloud record, and there is no in-app remote delete. | User believes data is erased; Play data-deletion policy and GDPR/DPDP expectations unmet. | Add "Delete cloud data" (sign out, delete `users/{uid}/**` via client batch or console link) and make clear-all state which copy is removed. | M |
+| DATA-02 ✅ Fixed | High | Sync/data | `src/features/notes/NotesView.tsx:409` (body has no `maxLength`), `src/sync/firebaseAdapter.ts:239` | No per-record size guard. One note >1 MiB (or imported record) makes every 500/400-op chunk fail permanently, so nothing after it syncs. | Silent sync wedge with a generic "Sync failed" message; data stays local-only. | Cap note body/record bytes client-side (e.g. 200 KB) before push, surface an actionable error, skip and quarantine oversized records. | S |
+| SEC-01 ✅ Fixed | High | Privacy/release | `android/app/src/main/res/values/strings.xml:7-8`, `docs/privacy-policy.md` | Health Connect privacy URL is `https://example.com/personal-os/privacy-policy` (own TODO on line 7) and the policy covers **only** health data, not Google account, synced notes/tasks, or Gemini requests. | Health Connect declaration and Play listing reject placeholder URLs; policy is materially incomplete. | Host the policy on an HTTPS domain, point the string and Settings at it, add sections for Firebase sync, Gemini (what is sent, BYO key), retention and deletion. | S |
 | AND-01 | High | Android/release | `android/app/build.gradle:20-23` | No `signingConfig`; `assembleRelease` yields `app-release-unsigned.apk`, no AAB, `minifyEnabled false`. | Cannot publish or sideload a trusted release build; Play requires a signed AAB. | Add a release keystore via `keystore.properties` (git-ignored), `signingConfigs.release`, `bundleRelease`, enable R8 with keep rules. | M |
 | UX-01 | Med | UI/feature | `src/features/settings/SettingsView.tsx:1161-1169`, `src/features/plan/CalendarView.tsx:89,221,745` | Week-start setting (Mon/Sun/Sat) is stored and mirrored to `data-week-start`, but the calendar always renders Monday-first. | A shipped setting silently does nothing; Sunday-week users misread the grid. | Thread `weekStart` through `weekDates`, month grid and day headers, or remove the control. | M |
 | UX-02 | Med | UI/feature | `src/features/settings/SettingsView.tsx:1230-1265`, manifest (no `POST_NOTIFICATIONS`) | Notification master switch, deadline/task reminders and quiet hours are persisted but no notification code, plugin, permission or scheduler exists. | Users enable reminders that never fire; promises in Settings copy are false. | Implement local notifications (Capacitor LocalNotifications + macOS `UNUserNotificationCenter`) or hide the group behind "coming soon". | L |
@@ -121,9 +123,9 @@ which means CI could silently skip rules forever (see DEV-01).
 | A11Y-04 | Low | Accessibility | `src/styles/components.css:780` | White check glyph on `#34C759` is ≈2.1:1, below the 3:1 non-text minimum. | Done state is hard to perceive for low-vision users. | Use `--text`/dark glyph or a darker green for the checkbox fill. | S |
 | A11Y-05 | Low | Accessibility | `src/hooks/useShortcuts.ts:130`, `src/features/shortcuts/CheatSheet.tsx` | Shortcut labels say "Ctrl K" while macOS matches Meta too. | Wrong modifier shown on macOS. | Render `⌘` on macOS and `Ctrl` elsewhere. | S |
 | DATA-03 | Med | Sync/cost | `src/sync/firebaseAdapter.ts:179-195` | Pull issues `getDocs` on four collections with no `limit`/pagination, plus a forced full pull every 24 h. | Large histories re-read thousands of docs daily; risks Spark 50k/day reads across 2–3 devices. | Page pulls at ~300 docs (`limit` + `startAfter`) and surface a quota warning. | M |
-| DATA-04 | Low | Sync/rules | `firestore.rules:24-38` | `recordShape` does not require `id`/`updatedAt` and allows up to 40 arbitrary keys; no server-side byte cap (unavoidable in rules). | A malformed/oversized owner write is accepted and then has to be handled by every client. | Require `id`, `updatedAt`, `createdAt` and an allowlist of keys per collection; keep the client byte cap. | S |
+| DATA-04 ✅ Fixed | Low | Sync/rules | `firestore.rules:24-38` | `recordShape` does not require `id`/`updatedAt` and allows up to 40 arbitrary keys; no server-side byte cap (unavoidable in rules). | A malformed/oversized owner write is accepted and then has to be handled by every client. | Require `id`, `updatedAt`, `createdAt` and an allowlist of keys per collection; keep the client byte cap. | S |
 | ERR-01 | Med | Errors | `src/main.tsx:1-31` | No `window.addEventListener('unhandledrejection'/'error')`; only per-call catches. | Fire-and-forget promise failures (storage, Firebase, audio) are invisible and unreportable. | Add a global handler that logs redacted context and shows a toast once per session (AUDIT UX-01). | S |
-| MAC-01 | Med | macOS | `src-tauri/capabilities/default.json:11`, `src/platform/tauri.ts:9-16` | `fs:allow-write-file` is granted with no `fs:scope` path. In Tauri v2 the dialog does not widen the fs scope. | Backup export via "Save…" can fail at runtime with "forbidden path". **UNVERIFIED** — needs a signed local build. | Add a narrow scope (e.g. `$DOWNLOAD/**`, `$DOCUMENT/**`) or write via a Rust command that takes the dialog path. | S |
+| MAC-01 ✅ Fixed | Med | macOS | `src-tauri/capabilities/default.json:11`, `src/platform/tauri.ts:9-16` | `fs:allow-write-file` is granted with no `fs:scope` path. In Tauri v2 the dialog does not widen the fs scope. | Backup export via "Save…" can fail at runtime with "forbidden path". **UNVERIFIED** — needs a signed local build. | Add a narrow scope (e.g. `$DOWNLOAD/**`, `$DOCUMENT/**`) or write via a Rust command that takes the dialog path. | S |
 | MAC-02 | Med | macOS/release | `src-tauri/tauri.conf.json:37-52`, `src-tauri/Cargo.toml:4-8` | No signing identity, hardened runtime, notarization or updater; bundle metadata is the Tauri default (`authors=["you"]`, description "A Tauri App", empty license). | Gatekeeper blocks distribution; no security updates; About box shows placeholder data. | Configure Developer ID signing + notarization, add `tauri-plugin-updater`, fill metadata. | L |
 | AND-02 | Med | Android | `android/variables.gradle:4`, `src/platform/capacitor.ts:239-247` | `targetSdk 36` enforces edge-to-edge on Android 15+, but there is no inset handling; `StatusBar.setBackgroundColor` is deprecated/no-op there. | Status/navigation bars may overlap the top nav and tab bar on Android 15/16. **UNVERIFIED** (no device). | Apply system-bar insets (Capacitor `SystemBars`/`@capacitor/status-bar` overlay config) and pass insets to CSS vars. | M |
 | AND-03 | Low | Android | `android/app/src/main/res/values/strings.xml:5`, manifest (no intent-filter) | `custom_url_scheme` is defined but no deep-link intent filter or `appUrlOpen` handler exists. | Capability is advertised in resources but unusable. | Add an App Link/intent filter plus `CapApp.addListener('appUrlOpen')`, or drop the string. | M |
@@ -138,6 +140,18 @@ which means CI could silently skip rules forever (see DEV-01).
 | REL-01 | Med | Release | repo-wide | No crash reporting, no analytics, no store assets/screenshots/description, no Data Safety answers, no AAB. | Launch is blocked and post-launch failures are invisible. | Add Sentry (free tier) or Crashlytics, a privacy-respecting analytics choice, and prepare Play/App Store listings + Data Safety. | L |
 
 ---
+
+## Batch 1 status (13 Nov 2026)
+
+| ID | Status | Commit | What changed |
+| --- | --- | --- | --- |
+| DATA-01 | FIXED | `0790af2` | Settings separates **Clear data on this device** from **Delete my cloud data**. The cloud action lists `users/{uid}` (4 collections + `state/app|stats|preferences`), deletes in batches of 400 with progress, clears local data, signs out, and offers Retry on failure. Unit tests mock the adapter; e2e covers the renamed device-clear modal. `docs/FIREBASE_SYNC.md` documents the split. |
+| DATA-02 | FIXED | `dad8ec8` | Note bodies cap at 200,000 chars (textarea `maxLength` + counter, store/import clamp, import toast). Push estimates JSON bytes per record; anything over 900,000 is skipped, listed in sync status as unsyncable (id, title, size), and never blocks the rest. Tests cover a 1.2 MB note. |
+| SEC-01 | FIXED | `d03d9d6` | Policy rewritten (Google account, Firestore contents, Gemini + private notes, Health Connect, BYO key, deletion, `{EMAIL}`) and shipped as self-contained `docs/privacy.html` with README hosting steps. Android URL comes from `PRIVACY_POLICY_URL` via `resValue`; the health-manifest guard fails on `example.com`. Settings has a Privacy policy link from `src/config/links.ts`. |
+| MAC-01 | FIXED (runtime UNVERIFIED) | `2f7df37` | `fs:scope` allows only dialog-chosen paths plus `$DOWNLOAD`, `$DOCUMENT`, `$DESKTOP`; no `$HOME` wildcard. `cargo check` passes. Export/import steps recorded in `docs/NATIVE.md`; needs one signed local build to confirm. |
+| DATA-04 | FIXED | `00b3e5c` | Rules require a string `id` matching the doc id and a non-empty string `updatedAt` (ISO strings, not numeric — that is what the app writes), keep the 40-key cap, allow owner deletes for the cloud wipe, and reject extra state docs. Emulator suite: 32/32 pass on JDK 21. |
+
+Rules verification gap closed: `JAVA_HOME=/opt/homebrew/opt/openjdk@21 npm run test:rules` → 32 passed.
 
 ## Feature gaps vs original goals
 
@@ -193,8 +207,8 @@ which means CI could silently skip rules forever (see DEV-01).
 
 ## Prioritized roadmap (one batch ≈ one agent session)
 
-**Batch 1 — security, privacy, data loss (ship-blocking)**
-DATA-01, DATA-02, SEC-01, MAC-01, DATA-04; then run `npm run test:rules` on Java 21 and extend the suite for unauthenticated/other-user/malformed payloads.
+**Batch 1 — security, privacy, data loss (ship-blocking) — DONE 13 Nov 2026**
+DATA-01, DATA-02, SEC-01, MAC-01, DATA-04 fixed; rules suite runs 32/32 on Java 21. Remaining follow-up: confirm macOS backup export on a signed local build (MAC-01 runtime).
 
 **Batch 2 — broken features and correctness**
 UX-01 (week start), UX-03 (clock format), UX-02 (implement or hide notifications), AI-01 (`get_stats` range), UX-04 (pre-paint theme), ERR-01 (global handler), AND-02 (insets).
