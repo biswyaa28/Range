@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultSettings } from '@/domain/settings';
 import { defaultState } from '@/domain/types';
 import { executeReadTool } from '@/engines/llm/readTools';
@@ -49,7 +49,13 @@ describe('read-only AI tools', () => {
     expect(result.content.endsWith('</untrusted-local-data>')).toBe(true);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('reports the most recent seven days by date, not by insertion order', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 8, 12));
     const ctx = context();
     const day = (iso: string, focusMinutes: number) => ({
       date: iso,
@@ -72,5 +78,36 @@ describe('read-only AI tools', () => {
 
     const result = executeReadTool('get_stats', { range: 'week' }, ctx);
     expect(result.content).toContain('Focus minutes: 7');
+    expect(result.content).toContain('Days with data: 7 of 7');
+  });
+
+  it('honours month and year windows and reports fewer days when sparse', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 10, 12));
+    const ctx = context();
+    const day = (iso: string, focusMinutes: number) => ({
+      date: iso,
+      blocksDone: 0,
+      blocksTotal: 0,
+      tasksDone: 1,
+      focusMinutes,
+      updatedAt: `${iso}T00:00:00.000Z`,
+    });
+    ctx.state.dayStats = {
+      '2026-01-10': day('2026-01-10', 10),
+      '2025-12-20': day('2025-12-20', 20),
+      '2025-02-01': day('2025-02-01', 40),
+      '2024-01-01': day('2024-01-01', 80),
+    };
+
+    const month = executeReadTool('get_stats', { range: 'month' }, ctx);
+    expect(month.content).toContain('Range: month');
+    expect(month.content).toContain('Days with data: 2 of 30');
+    expect(month.content).toContain('Focus minutes: 30');
+
+    const year = executeReadTool('get_stats', { range: 'year' }, ctx);
+    expect(year.content).toContain('Range: year');
+    expect(year.content).toContain('Days with data: 3 of 365');
+    expect(year.content).toContain('Focus minutes: 70');
   });
 });

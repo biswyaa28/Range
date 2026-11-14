@@ -1,5 +1,6 @@
 import type { Settings } from '@/domain/settings';
 import type { AppState, Note } from '@/domain/types';
+import { addDays, todayISO } from '@/domain/dates';
 import { stripDataFence } from './sanitize';
 import type { LLMTool } from './types';
 
@@ -96,14 +97,32 @@ export function executeReadTool(
     const blocks = context.state.blocks.filter((block) => !block.deleted && (day === undefined || String(block.day) === String(day))).slice(0, 20);
     return { tool: name, noteIds: [], content: dataBlock(blocks.map((block) => `[block:${block.id}] ${block.title} · ${block.start}–${block.end}`)) };
   }
-  const range = typeof args['range'] === 'string' ? args['range'] : 'week';
+  const requested = typeof args['range'] === 'string' ? args['range'] : 'week';
+  const range = requested === 'year' ? 'year' : requested === 'month' ? 'month' : 'week';
+  const windowDays = range === 'year' ? 365 : range === 'month' ? 30 : 7;
+  const today = todayISO();
+  const start = addDays(today, -(windowDays - 1));
   const stats = Object.values(context.state.dayStats)
-    .filter((entry) => entry && typeof entry.date === 'string')
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-7);
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.date === 'string' &&
+        entry.date >= start &&
+        entry.date <= today,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
   const totalTasks = stats.reduce((sum, entry) => sum + entry.tasksDone, 0);
   const totalFocus = stats.reduce((sum, entry) => sum + entry.focusMinutes, 0);
-  return { tool: name, noteIds: [], content: dataBlock([`Range: ${range}`, `Tasks completed: ${totalTasks}`, `Focus minutes: ${totalFocus}`]) };
+  return {
+    tool: name,
+    noteIds: [],
+    content: dataBlock([
+      `Range: ${range}`,
+      `Days with data: ${stats.length} of ${windowDays}`,
+      `Tasks completed: ${totalTasks}`,
+      `Focus minutes: ${totalFocus}`,
+    ]),
+  };
 }
 
 export const READ_TOOLS: readonly LLMTool[] = [
