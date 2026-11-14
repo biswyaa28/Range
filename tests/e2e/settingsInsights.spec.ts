@@ -328,6 +328,23 @@ test.describe('Settings and Insights mobile (390px)', () => {
     await page.waitForTimeout(150);
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    // The theme is painted before the app bundle can run: stub out the module
+    // so only index.html and theme-init.js execute.
+    await page.route('**/src/main.tsx*', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
+    );
+    await page.goto('/#settings', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    const firstPaint = await page.evaluate(() => ({
+      scheme: document.documentElement.style.colorScheme,
+      background: getComputedStyle(document.documentElement).backgroundColor,
+    }));
+    expect(firstPaint.scheme).toBe('dark');
+    expect(firstPaint.background).toBe('rgb(10, 10, 11)');
+    await page.unroute('**/src/main.tsx*');
+    await page.reload();
+
     await expect(page.locator('button.seg-btn:has-text("Dark")')).toHaveAttribute(
       'aria-checked',
       'true',
