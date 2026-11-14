@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Task, TaskPriority } from '@/domain/types';
-import { todayISO, diffDays, fmtShort } from '@/domain/dates';
+import { todayISO, diffDays, fmtShort, formatTimeHM } from '@/domain/dates';
 import { parseQuickAdd } from '@/domain/quickAdd';
-import { useStore, store, stampNewRecord, softDeleteRecord, softUndeleteRecord, touchRecord } from '@/store';
+import {
+  useStore,
+  useSettings,
+  store,
+  stampNewRecord,
+  softDeleteRecord,
+  softUndeleteRecord,
+  touchRecord,
+} from '@/store';
 import { Segmented } from '@/ui/Segmented';
 import { Modal } from '@/ui/Modal';
 import { Icon } from '@/ui/Icon';
@@ -173,6 +181,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, o
 
 export const TasksView: React.FC = () => {
   const tasks = useStore((s) => s.tasks);
+  const settings = useSettings();
   const toast = useToast();
 
   const [filter, setFilter] = useState<TodoFilter>('all');
@@ -455,7 +464,8 @@ export const TasksView: React.FC = () => {
           <span>Schedule block:</span>
           <span className="chip solid">{quickBlock.title}</span>
           <span className="chip">
-            {quickBlock.start}–{quickBlock.end}
+            {formatTimeHM(quickBlock.start, settings.clockFormat)}–
+            {formatTimeHM(quickBlock.end, settings.clockFormat)}
           </span>
           <span>Add it from Plan.</span>
         </div>

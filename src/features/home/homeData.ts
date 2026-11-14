@@ -39,6 +39,7 @@ export interface HomeFocusWindow {
 export interface HomeData {
   today: string;
   now: string;
+  clockFormat: '12h' | '24h';
   nowMinutes: number;
   profileName: string;
   greeting: string;
@@ -259,6 +260,7 @@ export function buildHomeData(
   return {
     today,
     now: nowHM,
+    clockFormat,
     nowMinutes,
     profileName: profile.name || '',
     greeting: profile.greeting || 'auto',

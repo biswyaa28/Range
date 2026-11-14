@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { AppRoute } from '@/hooks';
-import { useStore } from '@/store';
+import { useSettings, useStore } from '@/store';
+import { formatTimeHM } from '@/domain/dates';
 import { Icon } from '@/ui/Icon';
 import { useHome } from './HomeContext';
 
@@ -31,6 +32,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ editing, onToggleEdit }) =
   const notes = useStore((s) => s.notes);
   const blocks = useStore((s) => s.blocks);
   const deadlines = useStore((s) => s.deadlines);
+  const settings = useSettings();
   const { actions } = useHome();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<SearchScope>('all');
@@ -67,7 +69,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ editing, onToggleEdit }) =
         if (!block.deleted && has(block.title)) {
           out.push({
             key: `block-${block.id}`,
-            label: `${block.title} · ${block.start}`,
+            label: `${block.title} · ${formatTimeHM(block.start, settings.clockFormat)}`,
             kind: 'Block',
             route: 'plan',
           });
@@ -88,7 +90,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ editing, onToggleEdit }) =
     }
 
     return out.slice(0, 8);
-  }, [blocks, deadlines, notes, query, scope, tasks]);
+  }, [blocks, deadlines, notes, query, scope, tasks, settings.clockFormat]);
 
   const openResult = (result: SearchResult) => {
     if (result.route === 'deadlines') {

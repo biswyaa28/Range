@@ -4,6 +4,7 @@ import {
   DAY_SHORT,
   addDays,
   fmtHM,
+  formatTime,
   fmtNice,
   fmtShort,
   fromISO,
@@ -439,10 +440,10 @@ export const CalendarView: React.FC = () => {
     });
 
     setAnnouncement(
-      `${block.title} resized to ${fmtHM(hmToMin(block.start))} to ${nextEnd}`,
+      `${block.title} resized to ${formatTime(hmToMin(block.start), settings.clockFormat)} to ${formatTime(endMinute, settings.clockFormat)}`,
     );
     pendingFocusRef.current = block.id;
-  }, []);
+  }, [settings.clockFormat]);
 
   const openDragCreate = useCallback(
     (iso: string, start: number, end: number) => {
@@ -569,7 +570,7 @@ export const CalendarView: React.FC = () => {
               key={minute}
               style={{ top: `${((minute - grid.s) / 60) * CAL_HH}px` }}
             >
-              {fmtHM(minute)}
+              {formatTime(minute, settings.clockFormat)}
             </i>
           ))}
         </div>
@@ -641,7 +642,7 @@ export const CalendarView: React.FC = () => {
                         transform: `translateY(${((nowMin - grid.s) / 60) * CAL_HH}px)`,
                       }}
                     >
-                      <b>{fmtHM(nowMin)}</b>
+                      <b>{formatTime(nowMin, settings.clockFormat)}</b>
                     </div>
                   ) : null}
                   {drag?.kind === 'create' && drag.iso === iso ? (
@@ -682,7 +683,7 @@ export const CalendarView: React.FC = () => {
                           }
                         : null;
                     const ariaLabel =
-                      `${block.title}, ${fmtHM(previewStart)} to ${fmtHM(previewEnd)}, ${source}` +
+                      `${block.title}, ${formatTime(previewStart, settings.clockFormat)} to ${formatTime(previewEnd, settings.clockFormat)}, ${source}` +
                       (done ? ', done' : '');
                     return (
                       <button
@@ -720,7 +721,8 @@ export const CalendarView: React.FC = () => {
                             <Icon name="check" size={11} className="cal-done-mark" />
                           ) : null}
                           <span className="cb-time">
-                            {fmtHM(previewStart)}–{fmtHM(previewEnd)}
+                            {formatTime(previewStart, settings.clockFormat)}–
+                            {formatTime(previewEnd, settings.clockFormat)}
                           </span>
                         </span>
                         <span className="cb-title">{block.title}</span>
@@ -886,8 +888,10 @@ export const CalendarView: React.FC = () => {
           <div className="plan-pop">
             <h3>{activePopoverBlock.title}</h3>
             <p className="plan-pop-sub">
-              {fmtShort(popover.iso)} · {fmtHM(hmToMin(activePopoverBlock.start))}–
-              {fmtHM(hmToMin(activePopoverBlock.end))} · {popoverMeta?.label} ·{' '}
+              {fmtShort(popover.iso)} ·{' '}
+              {formatTime(hmToMin(activePopoverBlock.start), settings.clockFormat)}–
+              {formatTime(hmToMin(activePopoverBlock.end), settings.clockFormat)} ·{' '}
+              {popoverMeta?.label} ·{' '}
               {activePopoverBlock.source === 'personal' ? 'Personal' : 'College'}
             </p>
             <div className="plan-pop-actions">

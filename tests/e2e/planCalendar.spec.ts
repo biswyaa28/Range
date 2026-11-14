@@ -268,3 +268,22 @@ test.describe("Week start setting", () => {
     );
   });
 });
+
+test.describe("Clock format setting", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page);
+  });
+
+  test("12-hour clock updates the calendar time gutter", async ({ page }) => {
+    await page.goto("/#plan");
+    await expect(page.locator(".cal-gutter i").first()).toHaveText(/^\d{2}:\d{2}$/);
+
+    await page.goto("/#settings");
+    await page.locator('[aria-label="Clock format"] button[data-value="12h"]').click();
+
+    await page.goto("/#plan");
+    await expect(page.locator(".cal-gutter i").first()).toHaveText(/\d{1,2}:\d{2} (AM|PM)/);
+  });
+});

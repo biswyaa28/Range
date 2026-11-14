@@ -11,6 +11,7 @@ import type { IconName } from '@/ui/Icon';
 import {
   DAY_FULL,
   fmtShort,
+  formatTimeHM,
 } from '@/domain/dates';
 import {
   isPaletteOpen,
@@ -21,6 +22,7 @@ import { fuzzyScore } from './fuzzy';
 import {
   exportBackup,
   liveArray,
+  settingsStore,
   store,
   useStore,
 } from '@/store';
@@ -351,7 +353,7 @@ export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts })
       results.push({
         key: `block-${block.id}`,
         label: block.title,
-        sub: `Block · ${day} · ${block.start}`,
+        sub: `Block · ${day} · ${formatTimeHM(block.start, settingsStore.get().clockFormat)}`,
         icon: 'grid',
         run: () => {
           onNavigate('plan');

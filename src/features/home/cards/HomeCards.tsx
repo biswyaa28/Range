@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { BentoCardSize, Task } from '@/domain/types';
-import { diffDays, fmtMS, fmtShort, hmToMin, todayISO } from '@/domain/dates';
+import { diffDays, fmtMS, fmtShort, formatTimeHM, hmToMin, todayISO } from '@/domain/dates';
 import { blockDoneOn, toggleBlockDoneOnDate } from '@/domain/recurrence';
 import { formatCountdown, plural } from '@/domain/homeGreeting';
 import { blockCategoryMeta } from '@/features/plan/blockCategories';
@@ -394,7 +394,7 @@ export const UpNextCard: React.FC<CardProps> = ({ size }) => {
       {head}
       <div className="un-title">{block.title}</div>
       <div className="un-time">
-        {block.start} – {block.end}
+        {formatTimeHM(block.start, data.clockFormat)} – {formatTimeHM(block.end, data.clockFormat)}
       </div>
       <span className="num un-count" id="un-count">
         {countdown}
@@ -727,7 +727,8 @@ export const TimelineCard: React.FC<CardProps> = ({ size }) => {
           <div className="nextmini">
             <span className="nt">{block.title}</span>
             <span className="nx">
-              {block.start}–{block.end}
+              {formatTimeHM(block.start, data.clockFormat)}–
+              {formatTimeHM(block.end, data.clockFormat)}
             </span>
           </div>
         ) : (
@@ -783,11 +784,12 @@ export const TimelineCard: React.FC<CardProps> = ({ size }) => {
         aria-pressed={done}
         onClick={() => toggleBlockDone(block.id)}
       >
-        <time>{block.start}</time>
+        <time>{formatTimeHM(block.start, data.clockFormat)}</time>
         <span>
           <span className="tn">{block.title}</span>
           <small>
-            {block.start}–{block.end} · {category}
+            {formatTimeHM(block.start, data.clockFormat)}–
+            {formatTimeHM(block.end, data.clockFormat)} · {category}
           </small>
         </span>
         <span className="ck">

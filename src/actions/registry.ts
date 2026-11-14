@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { DAY_FULL, todayISO } from '@/domain/dates';
+import { DAY_FULL, formatTimeHM, todayISO } from '@/domain/dates';
+import { settingsStore } from '@/store';
 import { defaultIdGen } from '@/domain/id';
 import {
   ACCENT_COLORS,
@@ -148,6 +149,10 @@ function cloneValue(value: unknown): unknown {
 function dayLabel(day: number | string): string {
   if (typeof day === 'number') return DAY_FULL[day] ?? `Day ${day}`;
   return day;
+}
+
+function timeLabel(hm: string): string {
+  return formatTimeHM(hm, settingsStore.get().clockFormat);
 }
 
 const setThemeSchema = z.object({ theme: choice(THEME_PREFERENCES) });
@@ -604,10 +609,14 @@ const addBlockAction: ActionDefinition<AddBlockInput, AddBlockSnapshot> = {
   preview(input) {
     return {
       title: 'Add timetable block',
-      summary: `Add “${input.title}” on ${dayLabel(input.day)}, ${input.start}–${input.end}.`,
+      summary: `Add “${input.title}” on ${dayLabel(input.day)}, ${timeLabel(input.start)}–${timeLabel(input.end)}.`,
       changes: [
         { label: 'Block', before: 'Not scheduled', after: input.title },
-        { label: 'When', before: 'None', after: `${dayLabel(input.day)} ${input.start}–${input.end}` },
+        {
+          label: 'When',
+          before: 'None',
+          after: `${dayLabel(input.day)} ${timeLabel(input.start)}–${timeLabel(input.end)}`,
+        },
         { label: 'Category', before: 'None', after: input.category ?? 'other' },
       ],
     };
@@ -723,7 +732,7 @@ const moveBlockAction: ActionDefinition<MoveBlockInput, BlockSnapshot> = {
   preview(input, context) {
     const block = context.getState().blocks.find((entry) => entry.id === input.id && !entry.deleted);
     if (!block) throw new ActionError('That timetable block is no longer available.');
-    return { title: 'Move timetable block', summary: `Move “${block.title}”.`, changes: [{ label: 'When', before: `${dayLabel(block.day)} ${block.start}–${block.end}`, after: `${dayLabel(input.day)} ${input.start}–${input.end}` }] };
+    return { title: 'Move timetable block', summary: `Move “${block.title}”.`, changes: [{ label: 'When', before: `${dayLabel(block.day)} ${timeLabel(block.start)}–${timeLabel(block.end)}`, after: `${dayLabel(input.day)} ${timeLabel(input.start)}–${timeLabel(input.end)}` }] };
   },
   apply(input, context) {
     let captured: BlockSnapshot | null = null;
@@ -1004,7 +1013,7 @@ export function actionSystemPrompt(context: ActionContext): string {
     .slice(0, 24)
     .map(
       (block) =>
-        `- ${block.id}: ${stripDataFence(block.title)} · ${dayLabel(block.day)} ${block.start}–${block.end} · ${
+        `- ${block.id}: ${stripDataFence(block.title)} · ${dayLabel(block.day)} ${timeLabel(block.start)}–${timeLabel(block.end)} · ${
           block.category
         }`,
     );
