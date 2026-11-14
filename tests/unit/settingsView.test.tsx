@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { defaultState } from '@/domain/types';
 import { defaultSettings } from '@/domain/settings';
@@ -27,6 +27,17 @@ vi.mock('@/sync/useSync', () => ({
     syncNow: vi.fn(),
   }),
 }));
+
+// jsdom has no Notification API; make the settings section render as granted.
+beforeAll(() => {
+  Object.defineProperty(window, 'Notification', {
+    configurable: true,
+    value: class {
+      static permission: NotificationPermission = 'granted';
+      static requestPermission = async (): Promise<NotificationPermission> => 'granted';
+    },
+  });
+});
 
 function renderSettings(props: ComponentProps<typeof SettingsView> = {}) {
   return render(

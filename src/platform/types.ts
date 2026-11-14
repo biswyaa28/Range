@@ -39,6 +39,28 @@ export interface HealthDataSummary {
 
 export type HealthAccessState = 'granted' | 'denied' | 'unavailable';
 
+export type NotificationPermissionState = 'granted' | 'denied' | 'prompt' | 'unsupported';
+
+export interface ScheduledNotification {
+  id: number;
+  /** Epoch milliseconds. */
+  at: number;
+  title: string;
+  body: string;
+}
+
+/**
+ * Local notifications only. Implementations must never send data off-device
+ * and must reject unsupported platforms explicitly.
+ */
+export interface NotificationAdapter {
+  isSupported(): boolean;
+  permission(): Promise<NotificationPermissionState>;
+  requestPermission(): Promise<NotificationPermissionState>;
+  schedule(items: readonly ScheduledNotification[]): Promise<void>;
+  cancelAll(): Promise<void>;
+}
+
 export interface HealthProvider {
   isAvailable(): Promise<boolean>;
   requestAccess(): Promise<HealthAccessState>;

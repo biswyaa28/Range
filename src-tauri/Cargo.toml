@@ -27,6 +27,7 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
 # Desktop Google sign-in: loopback OAuth + PKCE.
 ureq = "2"
 sha2 = "0.10"

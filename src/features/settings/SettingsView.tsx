@@ -11,6 +11,12 @@ import {
   useStore,
 } from '@/store';
 import type { HapticsConfig, ThemeMode } from '@/domain/types';
+import type { NotificationPermissionState } from '@/platform';
+import { notifications } from '@/platform';
+import {
+  notificationPermission,
+  requestNotificationPermission,
+} from './notificationSync';
 import { defaultState } from '@/domain/types';
 import type {
   AccentColor,
@@ -42,7 +48,11 @@ import {
 import { countOversizedNotes } from '@/domain/limits';
 import { PRIVACY_POLICY_URL } from '@/config/links';
 import { resolveBentoLayout } from '@/domain/bentoLayout';
-import { HOME_CARD_IDS, HOME_CARD_SPECS, HOME_CARDS } from '@/features/home/cards/registry';
+import {
+  HOME_CARD_IDS,
+  HOME_CARD_SPECS,
+  HOME_CARDS,
+} from '@/features/home/cards/registry';
 import { Haptics } from '@/engines/haptics';
 import { platformName } from '@/platform';
 import { useSync } from '@/sync/useSync';
@@ -213,7 +223,9 @@ const AiKeyField: React.FC = () => {
           aria-label="AI API key"
           autoComplete="off"
           spellCheck={false}
-          placeholder={hasKey ? 'Key saved — paste a new one to replace' : 'Paste your API key'}
+          placeholder={
+            hasKey ? 'Key saved — paste a new one to replace' : 'Paste your API key'
+          }
           maxLength={512}
           value={draft}
           disabled={saving || !loaded}
@@ -251,7 +263,7 @@ const AiKeyField: React.FC = () => {
           ? error
           : hasKey
             ? 'Saved securely on this device. The key is never synced.'
-            : note ?? 'Stored in secure storage, never in settings or the cloud.'}
+            : (note ?? 'Stored in secure storage, never in settings or the cloud.')}
       </p>
     </div>
   );
@@ -286,7 +298,11 @@ const SettingsGroupCard: React.FC<{ group: SettingGroup }> = ({ group }) => {
   const titleId = `settings-${group.id}-title`;
 
   return (
-    <section className="settings-section" data-section={group.id} aria-labelledby={titleId}>
+    <section
+      className="settings-section"
+      data-section={group.id}
+      aria-labelledby={titleId}
+    >
       <div className="settings-section-head">
         <span className="settings-section-icon">
           <Icon name={group.icon} size={15} />
@@ -294,7 +310,9 @@ const SettingsGroupCard: React.FC<{ group: SettingGroup }> = ({ group }) => {
         <h2 className="settings-section-title" id={titleId}>
           {group.title}
         </h2>
-        {group.action ? <div className="settings-section-action">{group.action}</div> : null}
+        {group.action ? (
+          <div className="settings-section-action">{group.action}</div>
+        ) : null}
       </div>
       <div className="settings-group">
         {group.items.map((item) => (
@@ -354,7 +372,9 @@ const HomeWidgetList: React.FC<HomeWidgetListProps> = ({
           </span>
           <div className="settings-widget-copy">
             <div className="settings-widget-title">{title}</div>
-            <div className="settings-widget-desc">{shown ? 'Shown on Home' : 'Hidden from Home'}</div>
+            <div className="settings-widget-desc">
+              {shown ? 'Shown on Home' : 'Hidden from Home'}
+            </div>
           </div>
           <div className="settings-widget-actions">
             <button
@@ -397,9 +417,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const toast = useToast();
   const systemDark = useMediaQuery('(prefers-color-scheme: dark)');
   const importInputRef = useRef<HTMLInputElement | null>(null);
-  const dragRef = useRef<{ id: string; pointerId: number; lastTargetId: string | null } | null>(
-    null,
-  );
+  const dragRef = useRef<{
+    id: string;
+    pointerId: number;
+    lastTargetId: string | null;
+  } | null>(null);
   const adoptedLayoutRef = useRef(false);
 
   const [pendingImport, setPendingImport] = useState<BackupData | null>(null);
@@ -414,6 +436,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [signingIn, setSigningIn] = useState(false);
+  const [notifyPermission, setNotifyPermission] = useState<NotificationPermissionState>(() => {
+    if (!notifications.isSupported()) return 'unsupported';
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      return 'granted';
+    }
+    return 'prompt';
+  });
+
+  const notifySupported = notifications.isSupported();
+
+  useEffect(() => {
+    let active = true;
+    void notificationPermission().then((state) => {
+      if (active) setNotifyPermission(state);
+    });
+    return () => {
+      active = false;
+    };
+  }, [settings.notifications.enabled]);
 
   const startSignIn = useCallback(async (): Promise<void> => {
     if (signingIn) return;
@@ -440,17 +481,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const deadlines = liveArray(state.deadlines);
   const trackedDays = Object.keys(state.dayStats).length;
 
-  const syncChipLabel = !sync.state.configured || sync.state.status === 'signed-out'
-    ? 'Local only'
-    : sync.state.status === 'offline'
-      ? 'Offline'
-      : sync.state.status === 'error'
-        ? 'Sync issue'
-        : sync.state.status === 'syncing'
-          ? 'Syncing…'
-          : sync.state.pending
-            ? 'Pending'
-            : 'Synced';
+  const syncChipLabel =
+    !sync.state.configured || sync.state.status === 'signed-out'
+      ? 'Local only'
+      : sync.state.status === 'offline'
+        ? 'Offline'
+        : sync.state.status === 'error'
+          ? 'Sync issue'
+          : sync.state.status === 'syncing'
+            ? 'Syncing…'
+            : sync.state.pending
+              ? 'Pending'
+              : 'Synced';
   const syncChipClass =
     sync.state.status === 'error'
       ? 'chip red'
@@ -477,7 +519,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const layout = store.get().layout;
     if (!Array.isArray(layout.order) || layout.order.length === 0) return;
 
-    const resolved = resolveBentoLayout(layout, HOME_CARD_SPECS, store.get().profile.preset);
+    const resolved = resolveBentoLayout(
+      layout,
+      HOME_CARD_SPECS,
+      store.get().profile.preset,
+    );
     const order = normalizeWidgetOrder(resolved.order);
     const visible = widgetVisibilityFromHidden(resolved.hidden);
     const current = settingsStore.get().homeWidgets;
@@ -621,7 +667,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       next.splice(targetIndex + (after ? 1 : 0), 0, drag.id);
 
       applyHomeWidgets({ order: next, visible: current.visible });
-      setAnnouncement(`${widgetTitle(drag.id)} moved to position ${next.indexOf(drag.id) + 1}.`);
+      setAnnouncement(
+        `${widgetTitle(drag.id)} moved to position ${next.indexOf(drag.id) + 1}.`,
+      );
     },
     [applyHomeWidgets],
   );
@@ -675,6 +723,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const setNotifications = (patch: NotificationSettingsPatch): void => {
     settingsStore.set({ notifications: patch });
+  };
+
+  const handleMasterNotifications = async (enabled: boolean): Promise<void> => {
+    if (!enabled) {
+      setNotifications({ enabled: false });
+      return;
+    }
+    const state = await requestNotificationPermission();
+    setNotifyPermission(state);
+    if (state === 'granted') {
+      setNotifications({ enabled: true });
+      return;
+    }
+    setNotifications({ enabled: false });
+    toast.showToast(
+      state === 'unsupported'
+        ? 'Local notifications are not available on this device.'
+        : 'Notifications are blocked. Allow them in system settings first.',
+    );
   };
 
   const handleWeekStart = (value: string): void => {
@@ -840,7 +907,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       id: 'appearance',
       title: 'Appearance',
       icon: 'sliders',
-      keywords: 'look style theme accent colour color font type density spacing radius corners dark light auto system',
+      keywords:
+        'look style theme accent colour color font type density spacing radius corners dark light auto system',
       items: [
         {
           id: 'appearance-preview',
@@ -868,7 +936,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="settings-preview-line" />
               <div className="settings-preview-line short" />
               <div className="settings-preview-meta">
-                <span className="settings-preview-link" style={{ color: applied.accentText }}>
+                <span
+                  className="settings-preview-link"
+                  style={{ color: applied.accentText }}
+                >
                   a link
                 </span>
                 <span className="settings-preview-chip">3 tasks</span>
@@ -901,10 +972,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           id: 'accent',
           title: 'Accent color',
           description: 'Used for focus rings, active states and highlights.',
-          keywords: 'colour color swatch custom blue violet pink orange teal lime red mono',
+          keywords:
+            'colour color swatch custom blue violet pink orange teal lime red mono',
           block: true,
           control: (
-            <div className="settings-swatches" role="radiogroup" aria-label="Accent color">
+            <div
+              className="settings-swatches"
+              role="radiogroup"
+              aria-label="Accent color"
+            >
               {ACCENTS.map((accent) => (
                 <button
                   key={accent.id}
@@ -1156,7 +1232,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {
           id: 'home-widgets',
           title: 'Widgets',
-          description: 'Drag the handle or use the arrows to reorder. Toggle a widget to hide it.',
+          description:
+            'Drag the handle or use the arrows to reorder. Toggle a widget to hide it.',
           descriptionClassName: 'settings-widgets-hint',
           keywords: HOME_CARDS.map((card) => card.title).join(' '),
           block: true,
@@ -1276,120 +1353,155 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {
           id: 'notifications-master',
           title: 'Notifications',
-          description: 'Local nudges for the things you choose below.',
+          description: notifySupported
+            ? 'Local nudges for the things you choose below.'
+            : 'Local notifications are not available on this platform yet.',
           keywords: 'enable reminders alerts',
-          control: (
+          control: notifySupported ? (
             <Switch
-              checked={settings.notifications.enabled}
-              onChange={(enabled) => setNotifications({ enabled })}
+              checked={settings.notifications.enabled && notifyPermission === 'granted'}
+              onChange={(enabled) => {
+                void handleMasterNotifications(enabled);
+              }}
               aria-label="Notifications"
             />
-          ),
+          ) : null,
         },
-        {
-          id: 'notification-deadlines',
-          title: 'Deadline reminders',
-          description: 'A reminder before an assignment or exam is due.',
-          keywords: 'assignment exam due',
-          control: (
-            <Switch
-              checked={settings.notifications.deadlines}
-              onChange={(deadlines) => setNotifications({ deadlines })}
-              aria-label="Deadline reminders"
-            />
-          ),
-        },
-        {
-          id: 'notification-tasks',
-          title: 'Task reminders',
-          description: 'A nudge when a task is due today.',
-          keywords: 'todo due',
-          control: (
-            <Switch
-              checked={settings.notifications.tasks}
-              onChange={(tasks) => setNotifications({ tasks })}
-              aria-label="Task reminders"
-            />
-          ),
-        },
-        {
-          id: 'notification-focus',
-          title: 'Focus session alerts',
-          description: 'Let you know when a focus block starts or ends.',
-          keywords: 'pomodoro timer',
-          control: (
-            <Switch
-              checked={settings.notifications.focus}
-              onChange={(focus) => setNotifications({ focus })}
-              aria-label="Focus session alerts"
-            />
-          ),
-        },
-        {
-          id: 'notification-digest',
-          title: 'Weekly digest',
-          description: 'A short summary of your week every Sunday evening.',
-          keywords: 'weekly summary report',
-          control: (
-            <Switch
-              checked={settings.notifications.weeklyDigest}
-              onChange={(weeklyDigest) => setNotifications({ weeklyDigest })}
-              aria-label="Weekly digest"
-            />
-          ),
-        },
-        {
-          id: 'notification-quiet',
-          title: 'Quiet hours',
-          description: 'Pause nudges during a window you choose.',
-          keywords: 'silent night do not disturb',
-          control: (
-            <Switch
-              checked={settings.notifications.quietHours.enabled}
-              onChange={(enabled) => setNotifications({ quietHours: { enabled } })}
-              aria-label="Quiet hours"
-            />
-          ),
-        },
-        {
-          id: 'notification-quiet-period',
-          title: 'Quiet period',
-          description: settings.notifications.quietHours.enabled
-            ? 'No nudges during this window.'
-            : 'Turn on quiet hours to use this window.',
-          keywords: 'start end time night',
-          block: true,
-          control: (
-            <div className="settings-time-range">
-              <label className="settings-time-field">
-                <span>Start</span>
-                <input
-                  className="settings-time"
-                  type="time"
-                  aria-label="Quiet hours start"
-                  value={settings.notifications.quietHours.start}
-                  disabled={!settings.notifications.quietHours.enabled}
-                  onChange={(event) =>
-                    setNotifications({ quietHours: { start: event.target.value } })
-                  }
-                />
-              </label>
-              <label className="settings-time-field">
-                <span>End</span>
-                <input
-                  className="settings-time"
-                  type="time"
-                  aria-label="Quiet hours end"
-                  value={settings.notifications.quietHours.end}
-                  disabled={!settings.notifications.quietHours.enabled}
-                  onChange={(event) =>
-                    setNotifications({ quietHours: { end: event.target.value } })
-                  }
-                />
-              </label>
-            </div>
-          ),
-        },
+        ...(notifySupported && notifyPermission !== 'granted'
+          ? [
+              {
+                id: 'notification-permission',
+                title:
+                  notifyPermission === 'denied'
+                    ? 'Notifications are blocked'
+                    : 'Allow notifications',
+                description:
+                  notifyPermission === 'denied'
+                    ? 'Allow notifications in system settings, then come back.'
+                    : 'Your device asks for permission before any reminder is sent.',
+                keywords: 'permission allow browser system',
+                control:
+                  notifyPermission === 'denied' ? null : (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void handleMasterNotifications(true);
+                      }}
+                    >
+                      Allow
+                    </Button>
+                  ),
+              },
+            ]
+          : []),
+        ...(notifyPermission === 'granted'
+          ? [
+              {
+                id: 'notification-deadlines',
+                title: 'Deadline reminders',
+                description: 'A reminder before an assignment or exam is due.',
+                keywords: 'assignment exam due',
+                control: (
+                  <Switch
+                    checked={settings.notifications.deadlines}
+                    onChange={(deadlines) => setNotifications({ deadlines })}
+                    aria-label="Deadline reminders"
+                  />
+                ),
+              },
+              {
+                id: 'notification-tasks',
+                title: 'Task reminders',
+                description: 'A nudge when a task is due today.',
+                keywords: 'todo due',
+                control: (
+                  <Switch
+                    checked={settings.notifications.tasks}
+                    onChange={(tasks) => setNotifications({ tasks })}
+                    aria-label="Task reminders"
+                  />
+                ),
+              },
+              {
+                id: 'notification-focus',
+                title: 'Focus session alerts',
+                description: 'Let you know when a focus block starts or ends.',
+                keywords: 'pomodoro timer',
+                control: (
+                  <Switch
+                    checked={settings.notifications.focus}
+                    onChange={(focus) => setNotifications({ focus })}
+                    aria-label="Focus session alerts"
+                  />
+                ),
+              },
+              {
+                id: 'notification-digest',
+                title: 'Weekly digest',
+                description: 'A short summary of your week every Sunday evening.',
+                keywords: 'weekly summary report',
+                control: (
+                  <Switch
+                    checked={settings.notifications.weeklyDigest}
+                    onChange={(weeklyDigest) => setNotifications({ weeklyDigest })}
+                    aria-label="Weekly digest"
+                  />
+                ),
+              },
+              {
+                id: 'notification-quiet',
+                title: 'Quiet hours',
+                description: 'Pause nudges during a window you choose.',
+                keywords: 'silent night do not disturb',
+                control: (
+                  <Switch
+                    checked={settings.notifications.quietHours.enabled}
+                    onChange={(enabled) => setNotifications({ quietHours: { enabled } })}
+                    aria-label="Quiet hours"
+                  />
+                ),
+              },
+              {
+                id: 'notification-quiet-period',
+                title: 'Quiet period',
+                description: settings.notifications.quietHours.enabled
+                  ? 'No nudges during this window.'
+                  : 'Turn on quiet hours to use this window.',
+                keywords: 'start end time night',
+                block: true,
+                control: (
+                  <div className="settings-time-range">
+                    <label className="settings-time-field">
+                      <span>Start</span>
+                      <input
+                        className="settings-time"
+                        type="time"
+                        aria-label="Quiet hours start"
+                        value={settings.notifications.quietHours.start}
+                        disabled={!settings.notifications.quietHours.enabled}
+                        onChange={(event) =>
+                          setNotifications({ quietHours: { start: event.target.value } })
+                        }
+                      />
+                    </label>
+                    <label className="settings-time-field">
+                      <span>End</span>
+                      <input
+                        className="settings-time"
+                        type="time"
+                        aria-label="Quiet hours end"
+                        value={settings.notifications.quietHours.end}
+                        disabled={!settings.notifications.quietHours.enabled}
+                        onChange={(event) =>
+                          setNotifications({ quietHours: { end: event.target.value } })
+                        }
+                      />
+                    </label>
+                  </div>
+                ),
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -1465,11 +1577,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           wide: true,
           control: (
             <div className="settings-inline-actions">
-              <Button variant="secondary" data-action="demo-load" onClick={handleDemoLoad}>
+              <Button
+                variant="secondary"
+                data-action="demo-load"
+                onClick={handleDemoLoad}
+              >
                 Load demo data
               </Button>
               {state.settings.seeded && (
-                <Button variant="secondary" data-action="demo-remove" onClick={handleDemoRemove}>
+                <Button
+                  variant="secondary"
+                  data-action="demo-remove"
+                  onClick={handleDemoRemove}
+                >
                   Remove demo data
                 </Button>
               )}
@@ -1619,7 +1739,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           description: !sync.state.configured
             ? 'Sync is not configured in this build. Add Firebase environment variables to enable it.'
             : sync.state.account
-              ? sync.state.account.email ?? 'Connected to Firebase.'
+              ? (sync.state.account.email ?? 'Connected to Firebase.')
               : 'Sign in to sync tasks, notes, timetable, settings and stats across devices.',
           keywords: 'google sign in account firebase',
           wide: true,
@@ -1667,7 +1787,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Button
               variant="secondary"
               data-action="sync-now"
-              disabled={sync.state.status === 'syncing' || sync.state.status === 'offline'}
+              disabled={
+                sync.state.status === 'syncing' || sync.state.status === 'offline'
+              }
               onClick={() => void sync.syncNow()}
             >
               {sync.state.status === 'syncing' ? 'Syncing…' : 'Sync now'}
@@ -1813,7 +1935,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ),
     }))
     .filter((group) => group.items.length > 0);
-  const resultCount = filteredGroups.reduce((total, group) => total + group.items.length, 0);
+  const resultCount = filteredGroups.reduce(
+    (total, group) => total + group.items.length,
+    0,
+  );
 
   return (
     <div className="view-content settings-view">
@@ -1855,7 +1980,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       <p className="settings-search-status" role="status">
-        {normalizedQuery ? `${resultCount} setting${resultCount === 1 ? '' : 's'} found` : ''}
+        {normalizedQuery
+          ? `${resultCount} setting${resultCount === 1 ? '' : 's'} found`
+          : ''}
       </p>
 
       <p className="sr-only" role="status" aria-live="polite">
@@ -1879,8 +2006,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <Modal open={pendingImport !== null} onClose={closeImport} title="Import backup">
         <p className="hint">
-          This replaces your current data with the chosen backup. Export first if you want a
-          rollback point.
+          This replaces your current data with the chosen backup. Export first if you want
+          a rollback point.
         </p>
         <div className="counts">
           <span className="chip">{countList(pendingImport, 'blocks')} blocks</span>
@@ -1900,13 +2027,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <Modal open={clearOpen} onClose={closeClear} title="Clear data on this device">
         <p className="hint">
-          This permanently removes every block, task, note, deadline and day of history from this
-          device only. It cannot be undone.
+          This permanently removes every block, task, note, deadline and day of history
+          from this device only. It cannot be undone.
         </p>
         {sync.state.account ? (
           <p className="hint">
-            You are signed in, so your cloud copy stays in Firebase and returns on the next sync.
-            Use “Delete my cloud data” to remove it too.
+            You are signed in, so your cloud copy stays in Firebase and returns on the
+            next sync. Use “Delete my cloud data” to remove it too.
           </p>
         ) : null}
         <div className="field">
@@ -1939,12 +2066,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <Modal open={deleteOpen} onClose={closeDelete} title="Delete my cloud data">
         <p className="hint">
-          This permanently deletes every block, task, note, deadline, app state document and saved
-          preference in your Firebase account. It then clears this device and signs you out. This
-          cannot be undone.
+          This permanently deletes every block, task, note, deadline, app state document
+          and saved preference in your Firebase account. It then clears this device and
+          signs you out. This cannot be undone.
         </p>
         {sync.state.account ? null : (
-          <p className="hint">You are signed out. Sign in with Google to delete your cloud data.</p>
+          <p className="hint">
+            You are signed out. Sign in with Google to delete your cloud data.
+          </p>
         )}
         <div className="field">
           <label htmlFor="delete-cloud-input">

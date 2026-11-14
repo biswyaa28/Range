@@ -7,6 +7,7 @@ import type { AccentColor, SettingsPatch } from '@/domain/settings';
 import { ToastProvider } from '@/ui/Toast';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { TopNav, BottomTabBar, Breadcrumb, StorageNotice } from '@/features/shell';
+import { watchNotifications } from '@/features/settings/notificationSync';
 
 const HomeView = React.lazy(() =>
   import('@/features/home/HomeView').then((module) => ({ default: module.HomeView })),
@@ -98,6 +99,9 @@ const AppShell: React.FC = () => {
   useEffect(() => {
     applySettings(appSettings);
   }, [appSettings]);
+
+  // Local reminders follow the data and notification settings.
+  useEffect(() => watchNotifications(), []);
 
   // Legacy surfaces (top-nav theme menu, onboarding, imports) still write the
   // original groups. Mirror those writes into the settings store so there is a

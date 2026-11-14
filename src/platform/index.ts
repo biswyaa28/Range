@@ -1,10 +1,16 @@
 import { webHaptics, webFileSaver, webStorage, webSecureStorage, webHealth } from './web';
+import {
+  capacitorNotifications,
+  tauriNotifications,
+  webNotifications,
+} from './notifications';
 import type {
   FileSaver,
   HapticsAdapter,
   StorageAdapter,
   SecureStorageAdapter,
   HealthProvider,
+  NotificationAdapter,
 } from './types';
 
 export * from './types';
@@ -15,6 +21,7 @@ export let fileSaver: FileSaver = webFileSaver;
 export const storage: StorageAdapter = webStorage;
 export let secureStorage: SecureStorageAdapter = webSecureStorage;
 export let health: HealthProvider = webHealth;
+export let notifications: NotificationAdapter = webNotifications;
 
 export type PlatformName = 'web' | 'macos' | 'windows' | 'linux' | 'android';
 
@@ -42,6 +49,7 @@ export async function initializePlatform(): Promise<void> {
     fileSaver = module.capacitorFileSaver;
     secureStorage = module.capacitorSecureStorage;
     health = module.capacitorHealth;
+    notifications = capacitorNotifications;
     module.initBackButton();
     module.initFocusWakeLock();
     module.initAppearanceAndKeyboard();
@@ -63,6 +71,7 @@ export async function initializePlatform(): Promise<void> {
     haptics = module.tauriHaptics;
     fileSaver = module.tauriFileSaver;
     secureStorage = module.tauriSecureStorage;
+    notifications = tauriNotifications;
     // Native Google sign-in runs through googleAuth (Rust loopback flow); the
     // Firebase SDK still owns the session.
   }
