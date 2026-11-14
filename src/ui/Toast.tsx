@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Haptics } from '@/engines';
 import './Toast.css';
 
@@ -16,6 +16,21 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+// Non-React callers (the global error handlers) reach the mounted host here.
+type GlobalToastListener = (message: string) => void;
+const globalToastListeners = new Set<GlobalToastListener>();
+
+export function showGlobalToast(message: string): void {
+  for (const listener of globalToastListeners) listener(message);
+}
+
+function subscribeGlobalToast(listener: GlobalToastListener): () => void {
+  globalToastListeners.add(listener);
+  return () => {
+    globalToastListeners.delete(listener);
+  };
+}
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -39,6 +54,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     [dismissToast],
   );
+
+  useEffect(() => subscribeGlobalToast((message) => showToast(message)), [showToast]);
 
   return (
     <ToastContext.Provider value={{ showToast, dismissToast }}>

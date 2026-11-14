@@ -6,6 +6,9 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/components.css';
 import { initializePlatform } from './platform';
+import { installGlobalErrorHandlers } from './lib/errorReporter';
+
+installGlobalErrorHandlers();
 
 async function bootstrap(): Promise<void> {
   // A failed native-bridge import must not stop the web app from mounting.
