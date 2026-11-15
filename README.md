@@ -17,16 +17,22 @@ owner-only. The same Vite/React build runs on the web, macOS (Tauri) and Android
 - Vitest for unit tests, Playwright for end-to-end tests
 - Zod for payload validation
 
-## Setup
+## Install
 
 Requirements: Node 20+ and npm. Native shells additionally need Rust/Xcode
 (macOS) or JDK 21+/Android Studio (Android).
 
 ```sh
+git clone https://github.com/biswyaa28/personal-os.git
+cd personal-os
 npm install
 cp .env.example .env.local
 npm run dev
 ```
+
+Use it as a web app at `http://localhost:5173`, or build a desktop/mobile app
+with the platform commands below. No account is required; sync and AI stay off
+until you configure them.
 
 `.env.local` is git-ignored. Sync stays disabled when the Firebase keys are
 missing, and the rest of the app remains fully local.
@@ -82,8 +88,10 @@ fails if a placeholder `example.com` URL returns.
 | `npm run tauri:dev` | Run the macOS desktop shell in development |
 | `npm run tauri:build` | Build the macOS `.app` and DMG |
 
-CI runs typecheck, lint, unit tests, build and the motion-CSS scan only; e2e and
-the rules emulator stay local.
+CI runs typecheck, lint, unit tests, build, the motion scan, Playwright, the
+Firestore rules emulator, `cargo check`/`cargo audit`, an Android build and a
+report-only `npm audit`. A `v*` tag builds Android and macOS artifacts and
+publishes them to a GitHub Release.
 
 ## Platform builds
 
@@ -95,8 +103,38 @@ the rules emulator stay local.
   `cd android && ./gradlew assembleDebug`. The APK is
   `android/app/build/outputs/apk/debug/app-debug.apk`.
   `npx cap open android` opens Android Studio.
+- **Android release** — `npm run android:release` builds a signed AAB + APK
+  when a git-ignored keystore is present, else an unsigned pair with a warning.
+  See [`docs/ANDROID_RELEASE.md`](docs/ANDROID_RELEASE.md).
 
 Details and first-launch notes: [`docs/NATIVE.md`](docs/NATIVE.md).
+
+## Release
+
+Versions are single-sourced from `package.json`: `npm run version:sync`
+updates Cargo, Tauri and Android, and `npm run version:check` guards CI.
+
+1. Bump the version and update `CHANGELOG.md`.
+2. `npm run check && npm run test:rules && (cd src-tauri && cargo check)`.
+3. `git tag v1.0.0 && git push origin master --tags` (after adding a remote).
+4. The Release workflow builds Android and macOS artifacts and attaches them
+   to the GitHub Release. Set `ANDROID_KEYSTORE_*` and
+   `TAURI_SIGNING_PRIVATE_KEY*` secrets for signed output; Apple notarization
+   additionally needs the `APPLE_*` secrets.
+
+macOS details: [`docs/MAC_RELEASE.md`](docs/MAC_RELEASE.md). Updater endpoint:
+`https://github.com/biswyaa28/personal-os/releases/latest/download/latest.json`.
+
+## Privacy
+
+Local-first: data stays on your device until you enable sync. No ads, no
+tracking, no analytics SDK. Anonymous crash reports are opt-in and send only a
+redacted error (name, message, stack), app version and platform; **Copy
+diagnostics** works fully offline. The AI assistant and Health Connect are
+opt-in, and the AI key never syncs.
+
+Full policy: [`docs/privacy-policy.md`](docs/privacy-policy.md) and the hosted
+[`docs/privacy.html`](docs/privacy.html).
 
 ## Docs
 
@@ -106,4 +144,7 @@ Details and first-launch notes: [`docs/NATIVE.md`](docs/NATIVE.md).
 - [`docs/NATIVE.md`](docs/NATIVE.md) — Tauri macOS and Capacitor Android builds
 - [`docs/OPS.md`](docs/OPS.md) — rules deploy, tombstone TTL and quota operations
 - [`docs/SYNC_TEST.md`](docs/SYNC_TEST.md) — two-device sync verification checklist
+- [`docs/ANDROID_RELEASE.md`](docs/ANDROID_RELEASE.md) — signing, R8 and Play Console
+- [`docs/MAC_RELEASE.md`](docs/MAC_RELEASE.md) — macOS build, signing and updater
+- [`docs/store/README.md`](docs/store/README.md) — store listing and Data safety kit
 - [`docs/README.md`](docs/README.md) — documentation conventions
