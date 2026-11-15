@@ -236,8 +236,26 @@ export function initFocusWakeLock(): void {
 
 export function applyThemeToStatusBar(isDark: boolean): void {
   const style = isDark ? StatusBarStyle.Dark : StatusBarStyle.Light;
+  // Android 15+ enforces edge-to-edge, so the bar background is transparent
+  // and the native WebView padding owns the layout. setBackgroundColor is a
+  // no-op there; only icon contrast remains meaningful.
   void StatusBar.setStyle({ style }).catch(() => {});
-  void StatusBar.setBackgroundColor({ color: isDark ? '#0A0A0B' : '#F5F5F7' }).catch(() => {});
+  void StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+}
+
+function syncAndroidChrome(isDark: boolean): void {
+  const bridge = (
+    window as unknown as { AndroidInsets?: { setChrome: (color: string, dark: boolean) => void } }
+  ).AndroidInsets;
+  if (!bridge || typeof bridge.setChrome !== 'function') return;
+  const background =
+    getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() ||
+    (isDark ? '#0A0A0B' : '#F5F5F7');
+  try {
+    bridge.setChrome(background, isDark);
+  } catch {
+    // The interface only exists on Android; ignore elsewhere.
+  }
 }
 
 export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): void {
@@ -257,8 +275,10 @@ export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): 
         window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = themePref === 'dark' || (themePref === 'auto' && systemDark);
       applyThemeToStatusBar(isDark);
+      syncAndroidChrome(isDark);
     } catch {
       applyThemeToStatusBar(true);
+      syncAndroidChrome(true);
     }
   };
 

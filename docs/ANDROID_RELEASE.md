@@ -67,3 +67,19 @@ Never commit either source. The `storeFile` path may be absolute or relative to
 `npm run check:health-manifest` again — it validates the newest merged manifest
 (including `release/`). Installing a release build requires a signed APK;
 without a keystore use the debug build.
+
+## Edge-to-edge manual checklist
+
+The WebView is padded by native system-bar and IME insets (`MainActivity`), and
+the same values are exposed as `--safe-top`, `--safe-bottom`, `--safe-left`,
+`--safe-right`. Check on a physical device or emulator:
+
+- Android 8 (API 26), 3-button navigation: status bar and nav bar clear the top
+  nav and bottom tab bar; no double spacing.
+- Android 13 (API 33), gesture navigation: tab bar sits above the gesture pill;
+  task/chat composer stays above the keyboard when it opens.
+- Android 15/16 (API 35/36), gesture + 3-button: modals are inset and their
+  close/action buttons are tappable; the keyboard never covers the chat input
+  or the prompter controls.
+- Toggle light/dark in Settings: status/nav icons flip contrast and the inset
+  strips match the page background.
