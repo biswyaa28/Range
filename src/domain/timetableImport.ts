@@ -23,6 +23,9 @@ export interface TimetableImportResult {
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/** Header names accepted in a CSV import, in any order. */
+const CSV_COLUMNS = ['day', 'start', 'end', 'title', 'type', 'category'] as const;
+
 export function normalizeImportDay(v: unknown): number | string | null {
   if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 6) {
     return Math.floor(v);
@@ -45,7 +48,108 @@ export function normalizeImportDay(v: unknown): number | string | null {
   return null;
 }
 
+/** RFC-4180-ish CSV splitter: quotes, escaped quotes and CRLF. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!;
+    if (quoted) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (char !== '\r') {
+      field += char;
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ''));
+}
+
+function isHeader(cells: string[]): boolean {
+  const seen = cells.map((cell) => cell.trim().toLowerCase());
+  return seen.includes('day') && seen.includes('start') && seen.includes('end') && seen.includes('title');
+}
+
+/** Raw objects for preview rendering, from JSON or CSV input. */
+export function parseTimetableItems(text: string): unknown[] {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    return parseJsonItems(trimmed);
+  }
+
+  const rows = parseCsv(trimmed);
+  if (rows.length === 0) return [];
+  const header = isHeader(rows[0]!) ? rows.shift()! : null;
+  const columns = (header ?? ['day', 'start', 'end', 'title', 'type']).map((cell) =>
+    cell.trim().toLowerCase(),
+  );
+
+  return rows.map((cells) => {
+    const item: Record<string, string> = {};
+    columns.forEach((column, index) => {
+      if ((CSV_COLUMNS as readonly string[]).includes(column)) {
+        item[column === 'type' ? 'category' : column] = (cells[index] ?? '').trim();
+      }
+    });
+    return item;
+  });
+}
+
+function parseJsonItems(text: string): unknown[] {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'blocks' in parsed &&
+      Array.isArray((parsed as { blocks: unknown[] }).blocks)
+    ) {
+      return (parsed as { blocks: unknown[] }).blocks;
+    }
+  } catch {
+    // validation reports the parse error
+  }
+  return [];
+}
+
 export function validateTimetableImport(rawText: string): TimetableImportResult {
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    return { valid: [], errors: [], fatal: 'Nothing to import.' };
+  }
+
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    return validateJson(trimmed);
+  }
+  return validateCsv(trimmed);
+}
+
+function validateJson(rawText: string): TimetableImportResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText);
@@ -85,6 +189,41 @@ export function validateTimetableImport(rawText: string): TimetableImportResult 
     };
   }
 
+  return validateItems(items);
+}
+
+function validateCsv(rawText: string): TimetableImportResult {
+  const rows = parseCsv(rawText);
+  if (rows.length === 0) {
+    return { valid: [], errors: [], fatal: 'The CSV is empty.' };
+  }
+  if (!isHeader(rows[0]!)) {
+    return {
+      valid: [],
+      errors: [],
+      fatal: 'CSV needs a header row: day,start,end,title,type.',
+    };
+  }
+
+  const header = rows[0]!.map((cell) => cell.trim().toLowerCase());
+  const items = rows.slice(1).map((cells) => {
+    const item: Record<string, string> = {};
+    header.forEach((column, index) => {
+      if ((CSV_COLUMNS as readonly string[]).includes(column)) {
+        item[column === 'type' ? 'category' : column] = (cells[index] ?? '').trim();
+      }
+    });
+    return item;
+  });
+
+  if (items.length === 0) {
+    return { valid: [], errors: [], fatal: 'The CSV has a header but no rows.' };
+  }
+
+  return validateItems(items);
+}
+
+function validateItems(items: unknown[]): TimetableImportResult {
   const valid: TimetableImportValidRow[] = [];
   const errors: TimetableImportRowError[] = [];
 
@@ -132,4 +271,3 @@ export function validateTimetableImport(rawText: string): TimetableImportResult 
 
   return { valid, errors };
 }
-

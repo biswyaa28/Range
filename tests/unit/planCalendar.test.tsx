@@ -188,7 +188,7 @@ describe('CalendarView', () => {
     renderCalendar();
 
     fireEvent.click(screen.getByRole('button', { name: 'Import timetable' }));
-    fireEvent.change(screen.getByLabelText('JSON'), {
+    fireEvent.change(screen.getByLabelText('Timetable data'), {
       target: {
         value: JSON.stringify([
           { title: 'Imported lecture', day: 'Monday', start: '09:00', end: '10:00' },
@@ -213,7 +213,7 @@ describe('CalendarView', () => {
     renderCalendar();
 
     fireEvent.click(screen.getByRole('button', { name: 'Import timetable' }));
-    fireEvent.change(screen.getByLabelText('JSON'), {
+    fireEvent.change(screen.getByLabelText('Timetable data'), {
       target: { value: '{ bad json' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Validate and preview' }));

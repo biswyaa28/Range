@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import type { Block } from '@/domain/types';
 import {
   normalizeImportDay,
+  parseTimetableItems,
   validateTimetableImport,
   TimetableImportResult,
   TimetableImportValidRow,
@@ -14,35 +15,19 @@ import { Modal } from '@/ui/Modal';
 import { Icon } from '@/ui/Icon';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
+import { fileSaver } from '@/platform';
 
 export interface ImportTimetableModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const TT_EXAMPLE = JSON.stringify(
-  [
-    {
-      title: 'DSA lecture',
-      day: 'Monday',
-      start: '09:00',
-      end: '10:00',
-      category: 'class',
-      source: 'college',
-    },
-    { title: 'Physics lab', day: 2, start: '14:00', end: '16:00', category: 'class' },
-    {
-      title: 'Exam revision',
-      day: '2026-12-05',
-      start: '18:00',
-      end: '19:30',
-      category: 'study',
-      source: 'personal',
-    },
-  ],
-  null,
-  2,
-);
+const TT_EXAMPLE = [
+  'day,start,end,title,type',
+  'Monday,09:00,10:00,DSA lecture,class',
+  'Tuesday,14:00,16:00,Physics lab,class',
+  '2026-12-05,18:00,19:30,Exam revision,study',
+].join('\n');
 
 interface PreviewRow {
   row: number;
@@ -53,24 +38,6 @@ interface PreviewRow {
   errors: string[];
 }
 
-function rawItems(text: string): unknown[] {
-  try {
-    const parsed: unknown = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed;
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      'blocks' in parsed &&
-      Array.isArray((parsed as { blocks: unknown[] }).blocks)
-    ) {
-      return (parsed as { blocks: unknown[] }).blocks;
-    }
-  } catch {
-    // validation reports the parse error
-  }
-  return [];
-}
-
 function dayLabel(day: unknown): string {
   const normalized = normalizeImportDay(day);
   if (typeof normalized === 'number') return DAY_FULL[normalized] ?? '—';
@@ -78,7 +45,7 @@ function dayLabel(day: unknown): string {
 }
 
 function buildPreview(text: string, result: TimetableImportResult): PreviewRow[] {
-  const items = rawItems(text);
+  const items = parseTimetableItems(text);
   const errorsByRow = new Map<number, string[]>();
   result.errors.forEach((error) => {
     const list = errorsByRow.get(error.row) ?? [];
@@ -159,6 +126,17 @@ export const ImportTimetableModal: React.FC<ImportTimetableModalProps> = ({ open
     textareaRef.current?.focus();
     textareaRef.current?.select();
     toast.showToast('Example placed in the box');
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      await fileSaver.saveFile(
+        new Blob([TT_EXAMPLE + '\n'], { type: 'text/csv;charset=utf-8' }),
+        'timetable-template.csv',
+      );
+    } catch {
+      toast.showToast('Could not download the template');
+    }
   };
 
   const validate = () => {
@@ -265,19 +243,20 @@ export const ImportTimetableModal: React.FC<ImportTimetableModalProps> = ({ open
       ) : (
         <div className="plan-import">
           <p className="hint">
-            Paste a JSON array of blocks or choose a .json file. <span className="mono">day</span>{' '}
-            can be <span className="mono">0–6</span> (0 = Monday), a weekday name, or{' '}
-            <span className="mono">YYYY-MM-DD</span>.
+            Paste CSV with the header <span className="mono">day,start,end,title,type</span> or a JSON
+            array of blocks. <span className="mono">day</span> can be <span className="mono">0–6</span>{' '}
+            (0 = Monday), a weekday name, or <span className="mono">YYYY-MM-DD</span>. Times use{' '}
+            <span className="mono">HH:MM</span>.
           </p>
           <div className="field">
-            <label htmlFor="tt-json">JSON</label>
+            <label htmlFor="tt-json">Timetable data</label>
             <textarea
               id="tt-json"
               ref={textareaRef}
               className="std"
               rows={8}
               value={text}
-              placeholder='[{"title":"DSA lecture","day":0,"start":"09:00","end":"10:00"}]'
+              placeholder={'day,start,end,title,type\nMonday,09:00,10:00,DSA lecture,class'}
               onChange={(event) => {
                 setText(event.target.value);
                 setMessage('');
@@ -293,15 +272,19 @@ export const ImportTimetableModal: React.FC<ImportTimetableModalProps> = ({ open
               <Icon name="download" size={16} />
               Copy example format
             </button>
+            <button type="button" className="btn" onClick={downloadTemplate}>
+              <Icon name="download" size={16} />
+              Download CSV template
+            </button>
             {fileName ? <span className="hint mono">{fileName}</span> : null}
             <input
               ref={fileRef}
               id="tt-file"
               type="file"
-              accept=".json,application/json"
+              accept=".json,.csv,application/json,text/csv"
               style={{ display: 'none' }}
               onChange={handleFile}
-              aria-label="Choose timetable JSON file"
+              aria-label="Choose timetable CSV or JSON file"
             />
           </div>
           {message ? (
