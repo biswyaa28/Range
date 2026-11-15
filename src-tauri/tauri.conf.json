@@ -30,7 +30,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -40,6 +43,22 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "category": "Productivity",
+    "copyright": "Copyright \u00a9 2026 Biswajeet Rout",
+    "shortDescription": "Local-first personal dashboard",
+    "longDescription": "Plan your timetable, tasks, notes and focus sessions locally, with optional encrypted sync and AI.",
+    "createUpdaterArtifacts": true,
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgyRkI4NkY2OUI5QThDODEKUldTQmpKcWI5b2I3Z2k4OUpoRE1MUkZKb2o2M3h3SFFCOXgzdWFZTDhMbE92cTY2bytRVWsycWMK",
+      "endpoints": [
+        "https://github.com/biswyaa28/personal-os/releases/latest/download/latest.json"
+      ]
     }
   }
 }

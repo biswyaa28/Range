@@ -12,7 +12,8 @@ import {
 } from '@/store';
 import type { HapticsConfig, ThemeMode } from '@/domain/types';
 import type { NotificationPermissionState } from '@/platform';
-import { notifications } from '@/platform';
+import { notifications, platformName } from '@/platform';
+import { checkForUpdates, type UpdateProgress } from '@/platform/updater';
 import {
   notificationPermission,
   requestNotificationPermission,
@@ -54,7 +55,6 @@ import {
   HOME_CARDS,
 } from '@/features/home/cards/registry';
 import { Haptics } from '@/engines/haptics';
-import { platformName } from '@/platform';
 import { useSync } from '@/sync/useSync';
 import type { DeleteProgress, SyncState } from '@/sync/types';
 import { Button } from '@/ui/Button';
@@ -433,6 +433,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
+  const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [signingIn, setSigningIn] = useState(false);
@@ -1502,6 +1505,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               },
             ]
           : []),
+      ],
+    },
+    {
+      id: 'updates',
+      title: 'Updates',
+      icon: 'download',
+      keywords: 'version update mac macos release',
+      items: [
+        {
+          id: 'updates-check',
+          title: 'Check for updates',
+          description: updateResult ?? 'Downloads a signed update from GitHub Releases when one is available.',
+          keywords: 'version latest upgrade',
+          wide: true,
+          control: (
+            <div className="settings-inline-actions">
+              <Button
+                variant="secondary"
+                data-action="check-updates"
+                disabled={updateProgress !== null && updateProgress.status !== 'installing'}
+                onClick={() => {
+                  setUpdateError(null);
+                  setUpdateResult(null);
+                  void checkForUpdates(setUpdateProgress)
+                    .then((version) => {
+                      setUpdateResult(
+                        version
+                          ? `Version ${version} downloaded — restart to finish updating.`
+                          : 'You are on the latest version.',
+                      );
+                    })
+                    .catch((error: unknown) => {
+                      setUpdateError(error instanceof Error ? error.message : 'Update check failed');
+                    })
+                    .finally(() => setUpdateProgress(null));
+                }}
+              >
+                Check for updates
+              </Button>
+              {updateProgress && (
+                <span role="status">
+                  {updateProgress.status === 'checking'
+                    ? 'Checking…'
+                    : updateProgress.status === 'installing'
+                      ? 'Installing…'
+                      : `Downloading ${updateProgress.percent ?? 0}%`}
+                </span>
+              )}
+              {updateError && <span role="alert">{updateError}</span>}
+            </div>
+          ),
+        },
       ],
     },
     {

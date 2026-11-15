@@ -46,3 +46,6 @@ blob-report/
 android/keystore.properties
 android/*.jks
 android/*.keystore
+
+# Tauri updater signing keys (never commit)
+.tauri/

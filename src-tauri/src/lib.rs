@@ -112,6 +112,7 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_notification::init())
+  .plugin(tauri_plugin_updater::Builder::new().build())
     .setup(|app| {
       app.set_menu(build_menu(app.handle())?)?;
       app.on_menu_event(|app, event| {
