@@ -1,11 +1,12 @@
 import type { Auth } from 'firebase/auth';
-import type { DocumentReference, Firestore } from 'firebase/firestore';
+import type { DocumentReference, Firestore, QueryConstraint } from 'firebase/firestore';
 import type { DayStats } from '@/domain/types';
 import type { GoogleCredential } from '@/platform/googleAuth';
 import type { FirebaseConfig } from './firebaseConfig';
 import { planPushBatches, writesDayStats, writesStateApp } from './batching';
 import { buildStateAppPayload } from './appPayload';
 import { withTombstoneExpiry } from '@/domain/tombstone';
+import { drainPages } from './pullPages';
 import type {
   RemoteSnapshot,
   SyncAccount,
@@ -25,6 +26,8 @@ const APP_NAME = 'personal-os-sync';
 const DELETE_BATCH_OPS = 400;
 
 const RECORD_COLLECTIONS = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
+/** Pages are small enough for slow connections and count against reads once. */
+export const PULL_PAGE_SIZE = 300;
 const STATE_DOCS = ['app', 'stats', 'preferences'] as const;
 
 export interface FirebaseAdapterOptions {
@@ -72,12 +75,6 @@ function toAccount(user: AuthUserLike | null): SyncAccount | null {
     displayName: user.displayName,
     photoURL: user.photoURL,
   };
-}
-
-function records(snapshot: {
-  docs: Array<{ id: string; data: () => Record<string, unknown> }>;
-}): Record<string, unknown>[] {
-  return snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }));
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -180,33 +177,67 @@ export class FirebaseAdapter implements SyncAdapter {
     const user = fs.doc(db, 'users', account.uid);
     const since = options.since ?? null;
 
-    // `updatedAt` is a string and Firestore indexes it automatically, so this
-    // range query needs no composite index. Documents written without
-    // `updatedAt` (never produced by the app) are skipped by the filter.
-    const changed = (name: string) => {
-      const collectionRef = fs.collection(user, name);
-      return since ? fs.query(collectionRef, fs.where('updatedAt', '>', since)) : collectionRef;
-    };
+    const collections: Partial<Record<(typeof RECORD_COLLECTIONS)[number], unknown[]>> = {};
 
-    const [blocks, tasks, notes, deadlines, appSnap, statsSnap, preferencesSnap] =
-      await Promise.all([
-        fs.getDocs(changed('blocks')),
-        fs.getDocs(changed('tasks')),
-        fs.getDocs(changed('notes')),
-        fs.getDocs(changed('deadlines')),
-        fs.getDoc(fs.doc(user, 'state', 'app')),
-        fs.getDoc(fs.doc(user, 'state', 'stats')),
-        fs.getDoc(fs.doc(user, 'state', 'preferences')),
-      ]);
+    // Each collection is read in `updatedAt, documentId` order so paging is
+    // stable across retries and needs no composite index. Documents written
+    // without `updatedAt` (never produced by the app) are skipped.
+    for (const name of RECORD_COLLECTIONS) {
+      const collectionRef = fs.collection(user, name);
+      const start = options.resume?.[name] ?? null;
+      collections[name] = await drainPages<Record<string, unknown>>({
+        pageSize: PULL_PAGE_SIZE,
+        cursor: start,
+        fetchPage: async (cursor, limit) => {
+          const constraints: QueryConstraint[] = [];
+          if (since) constraints.push(fs.where('updatedAt', '>', since));
+          constraints.push(fs.orderBy('updatedAt'), fs.orderBy(fs.documentId()));
+          if (cursor) constraints.push(fs.startAfter(cursor.updatedAt, cursor.id));
+          constraints.push(fs.limit(limit));
+          const snapshot = await fs.getDocs(fs.query(collectionRef, ...constraints));
+          const docs = snapshot.docs.map((entry) => ({ id: entry.id, data: entry.data() }));
+          const last = docs[docs.length - 1];
+          return {
+            records: docs.map((entry) => ({ ...entry.data, id: entry.id })),
+            cursor: last
+              ? { updatedAt: String(last.data['updatedAt'] ?? ''), id: last.id }
+              : null,
+            hasMore: docs.length === limit,
+          };
+        },
+        onPage: (progress) => {
+          options.onPage?.({
+            collection: name,
+            read: progress.read,
+            page: progress.page,
+            cursor: progress.cursor,
+          });
+          options.onProgress?.({ collection: name, read: progress.read, page: progress.page });
+        },
+      });
+    }
+
+    const [appSnap, statsSnap, preferencesSnap] = await Promise.all([
+      fs.getDoc(fs.doc(user, 'state', 'app')),
+      fs.getDoc(fs.doc(user, 'state', 'stats')),
+      fs.getDoc(fs.doc(user, 'state', 'preferences')),
+    ]);
+    const blocks = collections.blocks ?? [];
+    const tasks = collections.tasks ?? [];
+    const notes = collections.notes ?? [];
+    const deadlines = collections.deadlines ?? [];
+    const documentsRead =
+      blocks.length + tasks.length + notes.length + deadlines.length + 3;
 
     const app = appSnap.exists() ? appSnap.data() : null;
     const stats = statsSnap.exists() ? asDayStats(statsSnap.data()) : null;
 
     return {
-      blocks: records(blocks),
-      tasks: records(tasks),
-      notes: records(notes),
-      deadlines: records(deadlines),
+      blocks,
+      tasks,
+      notes,
+      deadlines,
+      documentsRead,
       profile: asRecord(app?.['profile']),
       layout: asRecord(app?.['layout']),
       appSettings: asRecord(app?.['settings']),

@@ -131,7 +131,10 @@ function sameState(a: SyncState, b: SyncState): boolean {
     (a.unsyncable?.length ?? 0) === (b.unsyncable?.length ?? 0) &&
     (a.unsyncable ?? []).every(
       (record, index) => record.id === (b.unsyncable ?? [])[index]?.id,
-    )
+    ) &&
+    a.readsToday === b.readsToday &&
+    a.pullProgress?.collection === b.pullProgress?.collection &&
+    a.pullProgress?.read === b.pullProgress?.read
   );
 }
 
@@ -193,6 +196,8 @@ export class SyncEngine {
       pending: this.computePending(),
       error: null,
       unsyncable: [],
+      readsToday: this.syncState.readDailyReads(todayISO(this.clock)).count,
+      pullProgress: null,
     };
   }
 
@@ -307,7 +312,45 @@ export class SyncEngine {
         ? { since: null, full: true, reason: 'account-change' as const }
         : this.planPull(account);
       const pullStartedAt = this.clock.nowISO();
-      const snapshot = await adapter.pull(account, { since: plan.since });
+      const checkpoint = this.syncState.readCheckpoint(SYNC_CURSOR_SCHEMA, account.uid);
+      const pageReads: Record<string, number> = {};
+      const countPage = (collection: string, read: number): void => {
+        const delta = Math.max(0, read - (pageReads[collection] ?? 0));
+        if (delta === 0) return;
+        pageReads[collection] = read;
+        const daily = this.syncState.addDailyReads(todayISO(this.clock), delta);
+        this.setState({ readsToday: daily.count });
+      };
+      const snapshot = await adapter.pull(account, {
+        since: plan.since,
+        resume: checkpoint
+          ? {
+              [checkpoint.collection]: {
+                updatedAt: checkpoint.updatedAt,
+                id: checkpoint.id,
+              },
+            }
+          : undefined,
+        onPage: (page) => {
+          countPage(page.collection, page.read);
+          this.setState({
+            pullProgress: {
+              collection: page.collection,
+              read: page.read,
+              page: page.page,
+            },
+          });
+          if (page.cursor) {
+            this.syncState.writeCheckpoint({
+              schema: SYNC_CURSOR_SCHEMA,
+              accountUid: account.uid,
+              collection: page.collection,
+              updatedAt: page.cursor.updatedAt,
+              id: page.cursor.id,
+            });
+          }
+        },
+      });
       if (forceFull) this.fullPull = false;
       if (this.state.account?.uid !== account.uid) {
         // Signed out or switched accounts while the pull was in flight.
@@ -331,6 +374,9 @@ export class SyncEngine {
         // The pull cursor moves to the start of the pull that just ran, so a
         // write that landed while it ran is picked up next time.
         this.writePullCursor(account, plan, pullStartedAt);
+        this.syncState.clearCheckpoint();
+        const withStateDocs = this.syncState.addDailyReads(todayISO(this.clock), 3);
+        this.setState({ readsToday: withStateDocs.count, pullProgress: null });
         // Tombstones the remote has seen can go: the remote keeps its own copy
         // until the TTL removes it.
         this.quiet(() => {
@@ -373,6 +419,7 @@ export class SyncEngine {
           status: offline ? 'offline' : 'error',
           pending,
           error: offline ? null : errorMessage(failure),
+          pullProgress: null,
         });
       }
 

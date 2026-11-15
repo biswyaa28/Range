@@ -177,7 +177,9 @@ function syncStatusText(state: SyncState): string {
     case 'offline':
       return 'Offline. Changes are saved here and will sync when the connection returns.';
     case 'syncing':
-      return 'Pulling remote changes and sending local edits.';
+      return state.pullProgress
+        ? `Reading ${state.pullProgress.collection}: ${state.pullProgress.read.toLocaleString()} documents (page ${state.pullProgress.page}).`
+        : 'Pulling remote changes and sending local edits.';
     case 'error':
       return state.error ?? 'Sync failed. Try again.';
     case 'idle':
@@ -1857,6 +1859,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           ) : (
             <span className="settings-sync-note">Local only</span>
           ),
+        },
+        {
+          id: 'sync-reads',
+          title: 'Documents read today',
+          description:
+            (sync.state.readsToday ?? 0) >= 40_000
+              ? `${(sync.state.readsToday ?? 0).toLocaleString()} of 50,000 daily reads used. You are near Firestore's free daily limit; sync less often until tomorrow.`
+              : `${(sync.state.readsToday ?? 0).toLocaleString()} documents read today (Firestore allows 50,000 per day). Paged pulls read only changes.`,
+          descriptionClassName:
+            (sync.state.readsToday ?? 0) >= 40_000 ? 'settings-sync-error' : undefined,
+          keywords: 'reads quota firestore daily usage documents',
+          wide: true,
+          control: <span className="settings-sync-note">50k/day</span>,
         },
         ...(sync.state.notice
           ? [

@@ -422,7 +422,7 @@ describe('SyncEngine with a mocked adapter', () => {
     const { adapter, signIn } = setup();
     await signIn();
 
-    expect(adapter.pullOptions[0]).toEqual({ since: null });
+    expect(adapter.pullOptions[0]).toMatchObject({ since: null, resume: undefined });
   });
 
   it('pulls from slightly before the last pull cursor so clock skew cannot hide writes', async () => {
@@ -448,7 +448,7 @@ describe('SyncEngine with a mocked adapter', () => {
     adapter.emit(ACCOUNT_B);
     await engine.syncNow();
 
-    expect(adapter.pullOptions.at(-1)).toEqual({ since: null });
+    expect(adapter.pullOptions.at(-1)).toMatchObject({ since: null, resume: undefined });
     engine.dispose();
   });
 

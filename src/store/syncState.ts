@@ -8,6 +8,25 @@ import type { StorageAdapter } from '@/platform/types';
 export const SYNC_ACCOUNT_KEY = 'personalOS_sync_account_v1';
 export const SYNC_CURSOR_KEY = 'personalOS_sync_cursor_v1';
 export const SYNC_PUSH_LEDGER_KEY = 'personalOS_sync_ledger_v1';
+export const SYNC_PULL_CHECKPOINT_KEY = 'personalOS_sync_pull_checkpoint_v1';
+export const SYNC_READS_KEY = 'personalOS_sync_reads_v1';
+
+/** Where an interrupted paged pull stopped. */
+export interface PullCheckpoint {
+  schema: number;
+  accountUid: string;
+  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+  updatedAt: string;
+  id: string;
+}
+
+/** Firestore's free tier allows 50,000 document reads per day. */
+export const DAILY_READ_BUDGET = 50_000;
+
+export interface DailyReads {
+  date: string;
+  count: number;
+}
 
 export interface SyncCursor {
   /** Schema the cursor was written under; a change invalidates it. */
@@ -65,6 +84,55 @@ export class SyncStateStore {
     this.write(SYNC_CURSOR_KEY, JSON.stringify(cursor));
   }
 
+  readCheckpoint(schema: number, accountUid: string): PullCheckpoint | null {
+    const raw = this.read(SYNC_PULL_CHECKPOINT_KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Partial<PullCheckpoint>;
+      if (
+        parsed.schema !== schema ||
+        parsed.accountUid !== accountUid ||
+        typeof parsed.collection !== 'string' ||
+        typeof parsed.updatedAt !== 'string' ||
+        typeof parsed.id !== 'string'
+      ) {
+        return null;
+      }
+      return parsed as PullCheckpoint;
+    } catch {
+      return null;
+    }
+  }
+
+  writeCheckpoint(checkpoint: PullCheckpoint): void {
+    this.write(SYNC_PULL_CHECKPOINT_KEY, JSON.stringify(checkpoint));
+  }
+
+  clearCheckpoint(): void {
+    this.remove(SYNC_PULL_CHECKPOINT_KEY);
+  }
+
+  readDailyReads(today: string): DailyReads {
+    const raw = this.read(SYNC_READS_KEY);
+    if (!raw) return { date: today, count: 0 };
+    try {
+      const parsed = JSON.parse(raw) as Partial<DailyReads>;
+      if (parsed.date !== today || typeof parsed.count !== 'number') {
+        return { date: today, count: 0 };
+      }
+      return { date: today, count: Math.max(0, Math.floor(parsed.count)) };
+    } catch {
+      return { date: today, count: 0 };
+    }
+  }
+
+  addDailyReads(today: string, count: number): DailyReads {
+    const current = this.readDailyReads(today);
+    const next = { date: today, count: current.count + Math.max(0, Math.floor(count)) };
+    this.write(SYNC_READS_KEY, JSON.stringify(next));
+    return next;
+  }
+
   readLedger(): PushLedger {
     const raw = this.read(SYNC_PUSH_LEDGER_KEY);
     if (!raw) return {};
@@ -91,6 +159,15 @@ export class SyncStateStore {
       return this.storage.getItem(key);
     } catch {
       return null;
+    }
+  }
+
+  private remove(key: string): void {
+    if (!this.storage) return;
+    try {
+      this.storage.removeItem(key);
+    } catch {
+      // Best effort, like every other sync bookkeeping entry.
     }
   }
 

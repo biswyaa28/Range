@@ -1,5 +1,6 @@
 import type { AppState, DayStats } from '@/domain/types';
 import type { Settings } from '@/domain/settings';
+import type { PullCursor } from './pullPages';
 
 /** Signed-in identity exposed to the UI and adapters. */
 export interface SyncAccount {
@@ -25,6 +26,8 @@ export interface RemoteSnapshot {
   dayStats: Record<string, DayStats> | null;
   /** Versioned preferences, never containing `ai.apiKey`. */
   preferences: unknown | null;
+  /** Firestore documents read by this pull, for the daily quota counter. */
+  documentsRead?: number;
 }
 
 /** Only changed records and singletons are sent on each push. */
@@ -46,6 +49,16 @@ export interface SyncPullOptions {
    * When omitted or null, the adapter fetches all records in every collection.
    */
   since?: string | null;
+  /** Resume a collection after an interrupted paged pull. */
+  resume?: Partial<Record<'blocks' | 'tasks' | 'notes' | 'deadlines', PullCursor>>;
+  /** Fires after each 300-document page. */
+  onPage?: (progress: {
+    collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+    read: number;
+    page: number;
+    cursor: PullCursor | null;
+  }) => void;
+  onProgress?: (progress: { collection: string; read: number; page: number }) => void;
 }
 
 export interface DeleteProgress {
@@ -96,6 +109,10 @@ export interface SyncState {
   notice?: string | null;
   /** Records this device skipped because they exceed the size limit. */
   unsyncable?: UnsyncableRecord[];
+  /** Firestore documents read today on this device (local budget counter). */
+  readsToday?: number;
+  /** Collection currently being pulled and its page progress. */
+  pullProgress?: { collection: string; read: number; page: number } | null;
 }
 
 /**
