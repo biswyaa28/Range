@@ -26,6 +26,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- personalos://home, personalos://plan, … route through the hash router. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="personalos" android:host="home" />
+                <data android:scheme="personalos" android:host="plan" />
+                <data android:scheme="personalos" android:host="tasks" />
+                <data android:scheme="personalos" android:host="notes" />
+                <data android:scheme="personalos" android:host="focus" />
+                <data android:scheme="personalos" android:host="insights" />
+                <data android:scheme="personalos" android:host="settings" />
+            </intent-filter>
+
         </activity>
 
         <provider

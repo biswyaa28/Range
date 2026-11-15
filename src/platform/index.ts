@@ -52,6 +52,7 @@ export async function initializePlatform(): Promise<void> {
     notifications = capacitorNotifications;
     module.initBackButton();
     module.initFocusWakeLock();
+    module.initDeepLinks();
     module.initAppearanceAndKeyboard();
     return;
   }

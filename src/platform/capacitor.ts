@@ -10,6 +10,7 @@ import { store as defaultStore, PersonalStore } from '@/store';
 import { isFocusModeOpen, closeFocusMode, subscribeFocusMode } from '@/features/focus/focusModeBus';
 import { isPaletteOpen, closePalette } from '@/features/palette/paletteBus';
 import { isChatOpen, closeChat } from '@/features/chat/chatBus';
+import { routeFromDeepLink } from '@/domain/deepLink';
 import type { FileSaver, HapticsAdapter, StorageAdapter, SecureStorageAdapter } from './types';
 import { webStorage } from './web';
 
@@ -256,6 +257,19 @@ function syncAndroidChrome(isDark: boolean): void {
   } catch {
     // The interface only exists on Android; ignore elsewhere.
   }
+}
+
+export function initDeepLinks(): void {
+  const open = (url: string | null | undefined): void => {
+    if (!url) return;
+    const route = routeFromDeepLink(url);
+    if (route && window.location.hash !== `#${route}`) window.location.hash = `#${route}`;
+  };
+
+  void CapApp.addListener('appUrlOpen', (event) => open(event.url)).catch(() => {});
+  void CapApp.getLaunchUrl()
+    .then((result) => open(result?.url ?? null))
+    .catch(() => {});
 }
 
 export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): void {
