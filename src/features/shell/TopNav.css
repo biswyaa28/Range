@@ -350,7 +350,7 @@
 }
 
 .syncbtn[data-sync-status='syncing'] {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .syncbtn[data-sync-status='idle'] {

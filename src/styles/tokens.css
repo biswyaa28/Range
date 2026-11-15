@@ -83,8 +83,14 @@ html[data-theme="dark"] {
 /* Accent preset swatches */
 [data-accent="blue"] { --accent: #0A84FF; --focus: #0A84FF; }
 [data-accent="violet"] { --accent: #8B7BFF; --focus: #8B7BFF; }
-[data-accent="pink"] { --accent: #FF5E9C; --focus: #FF5E9C; }
-[data-accent="orange"] { --accent: #FF9F0A; --focus: #FF9F0A; }
-[data-accent="teal"] { --accent: #30D5C8; --focus: #30D5C8; }
-[data-accent="lime"] { --accent: #A3E635; --focus: #A3E635; }
+[data-accent="pink"] { --accent: #FF5E9C; --focus: #DF558B; }
+[data-accent="orange"] { --accent: #FF9F0A; --focus: #C47D0F; }
+[data-accent="teal"] { --accent: #30D5C8; --focus: #2BA59C; }
+[data-accent="lime"] { --accent: #A3E635; --focus: #729D2D; }
 [data-accent="red"] { --accent: #FF453A; --focus: #FF453A; }
+
+/* Focus rings stay 3:1 on both backgrounds; raw accents are fine on dark. */
+html[data-theme="dark"][data-accent="pink"] { --focus: #FF5E9C; }
+html[data-theme="dark"][data-accent="orange"] { --focus: #FF9F0A; }
+html[data-theme="dark"][data-accent="teal"] { --focus: #30D5C8; }
+html[data-theme="dark"][data-accent="lime"] { --focus: #A3E635; }

@@ -71,6 +71,28 @@ export function accentText(hex: string, isDark: boolean): string {
 }
 
 /**
+ * Focus rings need 3:1 against the page. Light accents such as lime and teal
+ * are darkened toward the foreground until they reach it.
+ */
+export function focusColor(hex: string, isDark: boolean): string {
+  const rgb = hexToRGB(hex);
+  const bg: [number, number, number] = isDark ? [10, 10, 11] : [255, 255, 255];
+  const fg: [number, number, number] = isDark ? [245, 245, 247] : [29, 29, 31];
+
+  let t: [number, number, number] = [rgb[0], rgb[1], rgb[2]];
+  let k = 0;
+  while (contrastRatio(t, bg) < 3 && k < 20) {
+    k++;
+    t = [
+      t[0] + (fg[0] - t[0]) * 0.14,
+      t[1] + (fg[1] - t[1]) * 0.14,
+      t[2] + (fg[2] - t[2]) * 0.14,
+    ];
+  }
+  return rgbToHex(t);
+}
+
+/**
  * Selects whether black or white text has higher contrast against the accent background.
  */
 export function textOnAccent(hex: string): '#0A0A0B' | '#FFFFFF' {
@@ -108,7 +130,7 @@ export function resolveAccent(
     accent: hex,
     accentText: accText,
     onAccent: onAcc,
-    focus: hex,
+    focus: focusColor(hex, isDark),
   };
 }
 

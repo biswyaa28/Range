@@ -34,7 +34,7 @@ describe('applySettings', () => {
     expect(root.style.getPropertyValue('--accent')).toBe('#0A84FF');
     expect(root.style.getPropertyValue('--accent-text')).toMatch(/^#[0-9a-f]{6}$/i);
     expect(root.style.getPropertyValue('--on-accent')).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(root.style.getPropertyValue('--focus')).toBe('#0A84FF');
+    expect(root.style.getPropertyValue('--focus')).toBe('#0a84ff');
 
     expect(root.style.getPropertyValue('--font-ui')).toContain('Georgia');
     expect(root.style.getPropertyValue('--sans')).toContain('Georgia');
