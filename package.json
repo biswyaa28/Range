@@ -13,6 +13,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
     "test:rules": "node scripts/run-rules-tests.mjs",
+    "seed:stress": "node scripts/seed-stress.mjs",
     "check:health-manifest": "node scripts/check-health-manifest.mjs",
     "android:release": "cd android && ./gradlew bundleRelease assembleRelease",
     "e2e": "playwright test",

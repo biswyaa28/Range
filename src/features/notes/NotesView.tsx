@@ -5,6 +5,7 @@ import { NOTE_BODY_MAX_CHARS } from '@/domain/limits';
 import { useStore, store } from '@/store';
 import { stampNewRecord, softDeleteRecord, softUndeleteRecord, touchRecord } from '@/store/stamp';
 import { Icon } from '@/ui/Icon';
+import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
 import { useSwipe } from '@/hooks/useSwipe';
@@ -352,15 +353,20 @@ export const NotesView: React.FC = () => {
 
           <div id="notes-list-inner">
             {sortedNotes.length > 0 ? (
-              sortedNotes.map((n) => (
-                <NoteRow
-                  key={n.id}
-                  note={n}
-                  active={n.id === notesSel}
-                  onSelect={handleSelectNote}
-                  onDelete={handleDeleteNote}
-                />
-              ))
+              <VirtualRows
+                items={sortedNotes}
+                rowHeight={78}
+                getKey={(note) => note.id}
+                testId="note-rows"
+                renderRow={(n) => (
+                  <NoteRow
+                    note={n}
+                    active={n.id === notesSel}
+                    onSelect={handleSelectNote}
+                    onDelete={handleDeleteNote}
+                  />
+                )}
+              />
             ) : (
               <div className="empty" style={{ padding: '18px' }}>
                 <p className="hint">

@@ -41,6 +41,7 @@ import {
   useSettings,
 } from '@/store';
 import { Icon } from '@/ui/Icon';
+import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { closeChat, isChatOpen, subscribeChat } from './chatBus';
 import './ChatPanel.css';
@@ -583,9 +584,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
               </p>
             </div>
           ) : (
-            state.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))
+            <VirtualRows
+              items={state.messages}
+              rowHeight={150}
+              overscan={6}
+              scrollRef={logRef}
+              getKey={(message) => message.id}
+              testId="chat-rows"
+              renderRow={(message) => <MessageBubble message={message} />}
+            />
           )}
           {proposals.length > 0 ? (
             <div className="chat-proposals" aria-label="Proposed changes">

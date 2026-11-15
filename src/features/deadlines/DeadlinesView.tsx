@@ -5,6 +5,7 @@ import { useStore, store } from '@/store';
 import { stampNewRecord, softDeleteRecord, softUndeleteRecord, touchRecord } from '@/store/stamp';
 import { Modal } from '@/ui/Modal';
 import { Icon } from '@/ui/Icon';
+import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
 import { approveDeadline, dismissDeadline, selectDeadlines } from './deadlinesActions';
@@ -273,10 +274,15 @@ export const DeadlinesView: React.FC = () => {
         </div>
 
         {inbox.length > 0 ? (
-          inbox.map((d) => {
-            const u = urgency(d.due);
-            return (
-              <div key={d.id} className={`dl-card pending ${u.cls}`}>
+          <VirtualRows
+            items={inbox}
+            rowHeight={96}
+            getKey={(deadline) => deadline.id}
+            testId="deadline-inbox-rows"
+            renderRow={(d) => {
+              const u = urgency(d.due);
+              return (
+                <div key={d.id} className={`dl-card pending ${u.cls}`}>
                 <span className="bar" />
                 <div className="dl-main">
                   <div className="dl-title">{d.title}</div>
@@ -309,9 +315,10 @@ export const DeadlinesView: React.FC = () => {
                     Dismiss
                   </button>
                 </div>
-              </div>
-            );
-          })
+                </div>
+              );
+            }}
+          />
         ) : (
           <p className="hint">Inbox is empty for now. Load demo data in Settings to see pending items here.</p>
         )}
@@ -325,15 +332,20 @@ export const DeadlinesView: React.FC = () => {
         </div>
 
         {rest.length > 0 ? (
-          rest.map((d) => (
-            <DeadlineItem
-              key={d.id}
-              deadline={d}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-              onEdit={handleOpenEdit}
-            />
-          ))
+          <VirtualRows
+            items={rest}
+            rowHeight={92}
+            getKey={(deadline) => deadline.id}
+            testId="deadline-rows"
+            renderRow={(d) => (
+              <DeadlineItem
+                deadline={d}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                onEdit={handleOpenEdit}
+              />
+            )}
+          />
         ) : (
           <p className="hint">Nothing here yet — approved deadlines will appear sorted by due date.</p>
         )}

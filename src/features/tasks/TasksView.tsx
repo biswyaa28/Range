@@ -13,6 +13,7 @@ import {
   touchRecord,
 } from '@/store';
 import { Segmented } from '@/ui/Segmented';
+import { VirtualRows } from '@/ui/VirtualRows';
 import { Modal } from '@/ui/Modal';
 import { Icon } from '@/ui/Icon';
 import { useToast } from '@/ui/Toast';
@@ -53,9 +54,19 @@ interface TaskItemProps {
   onToggle: (id: string, el?: HTMLElement) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  setSize?: number;
+  posInSet?: number;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, onEdit }) => {
+const TaskItem: React.FC<TaskItemProps> = ({
+  task,
+  popped,
+  onToggle,
+  onDelete,
+  onEdit,
+  setSize,
+  posInSet,
+}) => {
   const tickboxRef = useRef<HTMLButtonElement | null>(null);
 
   const { ref: swipeRef, transform, swiping, offset, handlers } = useSwipe<HTMLDivElement>({
@@ -117,6 +128,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, o
       tabIndex={0}
       role="listitem"
       aria-label={`Task: ${task.title}`}
+      aria-setsize={setSize}
+      aria-posinset={posInSet}
       onKeyDown={handleKeyDown}
       data-id={task.id}
       {...handlers}
@@ -601,24 +614,31 @@ export const TasksView: React.FC = () => {
       {/* Task List or Empty State */}
       <div className="task-list" role="list">
         {filteredTasks.length > 0 ? (
-          filteredTasks.map((task, index) => (
-            <div
-              key={task.id}
-              className="fx-in"
-              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
-            >
-              <TaskItem
-                task={task}
-                popped={justToggledId === task.id}
-                onToggle={handleToggle}
-                onDelete={(id) => {
-                  const t = liveTasks.find((x) => x.id === id);
-                  if (t) setDeleteCandidate(t);
-                }}
-                onEdit={(t) => setEditingTask({ ...t })}
-              />
-            </div>
-          ))
+          <VirtualRows
+            items={filteredTasks}
+            rowHeight={120}
+            getKey={(task) => task.id}
+            testId="task-rows"
+            renderRow={(task, index) => (
+              <div
+                className="fx-in"
+                style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+              >
+                <TaskItem
+                  task={task}
+                  popped={justToggledId === task.id}
+                  setSize={filteredTasks.length}
+                  posInSet={index + 1}
+                  onToggle={handleToggle}
+                  onDelete={(id) => {
+                    const t = liveTasks.find((x) => x.id === id);
+                    if (t) setDeleteCandidate(t);
+                  }}
+                  onEdit={(t) => setEditingTask({ ...t })}
+                />
+              </div>
+            )}
+          />
         ) : (
           <div className="empty" role="listitem">
             <h2>No tasks here</h2>
