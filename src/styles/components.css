@@ -165,7 +165,7 @@ textarea.std{resize:vertical}
 .hint{font-size:13px;color:var(--text-2)}
 .muted{color:var(--text-2)}
 .empty{border:1.5px dashed var(--border);border-radius:var(--r-card);padding:38px 22px;text-align:center;color:var(--text-2)}
-.empty h3{color:var(--text);font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.01em}
+.empty h2{color:var(--text);font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.01em}
 .empty .btn{margin-top:16px}
 .form-err{background:var(--red-tint);color:var(--red-t);border-radius:var(--r-input);padding:10px 13px;font-size:12.5px;font-weight:600;margin-top:10px}
 
@@ -183,7 +183,7 @@ textarea.std{resize:vertical}
 .pbar{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
 .pbar-fill{height:100%;border-radius:99px;background:var(--text);max-width:100%;transform-origin:0 50%;transform:scaleX(0);transition:transform .6s var(--ease-out)}
 .hero{transition:transform .35s var(--ease-out),box-shadow .35s var(--ease-out)}
-#view.scrolled-hero .hero{transform:translateY(-2px) scale(.988)}
+#main.scrolled-hero .hero{transform:translateY(-2px) scale(.988)}
 
 /* ---------------- today timeline ---------------- */
 .timeline{position:relative;display:flex;flex-direction:column;gap:10px;padding-top:2px}
@@ -201,7 +201,7 @@ textarea.std{resize:vertical}
 .block.now .now-chip{display:inline-flex}
 .tickbox{position:relative;z-index:1;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--border);background:transparent;justify-self:end;transition:background .3s var(--ease-out),border-color .3s var(--ease-out),scale var(--press-dur) var(--press-ease)}
 .tickbox svg{width:15px;height:15px}
-.tickbox svg path{stroke:#FFFFFF;stroke-dasharray:22;stroke-dashoffset:22}
+.tickbox svg path{stroke:#0A0A0B;stroke-dasharray:22;stroke-dashoffset:22}
 .block.done .tickbox,.task.done .tickbox,.tickbox.on{background:var(--green);border-color:var(--green)}
 .block.done .tickbox svg path,.task.done .tickbox svg path,.tickbox.on svg path{stroke-dashoffset:0}
 .block.done{background:var(--green-tint);border-color:rgba(52,199,89,.38)}
@@ -609,7 +609,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 ::view-transition-old(tabbar),::view-transition-new(tabbar){animation:none}
 @keyframes vtOut{to{opacity:0;transform:translateY(-6px)}}
 @keyframes vtIn{from{opacity:0;transform:translateY(8px)}}
-#view.enter{animation:vtIn .32s var(--ease-out)}
+#main.enter{animation:vtIn .32s var(--ease-out)}
 
 /* ---------------- reduced motion: disable non-essential animation ---------------- */
 @media(prefers-reduced-motion:reduce){
@@ -788,7 +788,7 @@ body.fx-calm .card,body.fx-calm .rail>*{animation:none}
 @keyframes slideup{from{opacity:0;transform:translateY(40px)}}
 
 /* bottom tab bar (mobile) */
-.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;display:none;grid-template-columns:repeat(5,1fr);gap:2px;padding:6px;border-radius:26px;overflow:visible;background:var(--glass);border:1px solid var(--card-bd);box-shadow:var(--shadow-2),var(--hi);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%)}
+.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;display:none;grid-template-columns:repeat(6,1fr);gap:2px;padding:6px;border-radius:26px;overflow:visible;background:var(--glass);border:1px solid var(--card-bd);box-shadow:var(--shadow-2),var(--hi);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%)}
 .tabbar .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border:0;border-radius:20px;background:none;color:var(--text-2);font:600 11px var(--sans);cursor:pointer;min-width:0;transition:transform .35s var(--ease-spring),scale var(--press-dur) var(--press-ease)}
 .tabbar .tab svg{width:22px;height:22px}.tabbar .tab.active{color:var(--text);background:var(--surface-2)}
 
@@ -1207,3 +1207,39 @@ button{touch-action:manipulation}
 @media(max-width:640px){#toasts{left:calc(16px + env(safe-area-inset-left,0px));right:calc(16px + env(safe-area-inset-right,0px))}}
 .fab{right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(26px + env(safe-area-inset-bottom,0px))}
 @media(max-width:899px){.fab{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+
+/* Touch layouts: every control gets a 44px hit area without changing the
+   desktop composition. Inline text links are intentionally excluded. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  [role="switch"],
+  [role="tab"],
+  input:not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+  button {
+    min-width: 44px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 44px;
+    height: 44px;
+  }
+  .tabbar .tab {
+    min-height: 52px;
+    min-width: 56px;
+  }
+}
+
+@media (pointer: coarse) {
+  /* Charts have seven bars; tighten the gap so 44px bars still fit. */
+  .bars {
+    gap: 2px;
+  }
+  input[type="color"] {
+    min-width: 44px;
+  }
+}
