@@ -46,11 +46,11 @@ describe('Prompter reading mode', () => {
     openPrompter();
     expect(document.querySelector('.pr-text')?.textContent).toContain('Opening line.');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Larger text' }));
+    fireEvent.click(screen.getByRole('button', { name: 'A+ larger text' }));
     expect(document.querySelector<HTMLElement>('.pr-text')?.style.fontSize).toBe('56px');
     expect(store.get().settings.prompter.size).toBe(56);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Faster' }));
+    fireEvent.click(screen.getByRole('button', { name: 'S+ faster' }));
     expect(screen.getByText('Speed 4')).toBeDefined();
     expect(store.get().settings.prompter.speed).toBe(4);
 

@@ -241,7 +241,9 @@ export function applyThemeToStatusBar(isDark: boolean): void {
   // and the native WebView padding owns the layout. setBackgroundColor is a
   // no-op there; only icon contrast remains meaningful.
   void StatusBar.setStyle({ style }).catch(() => {});
-  void StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+  if (typeof StatusBar.setOverlaysWebView === 'function') {
+    void StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+  }
 }
 
 function syncAndroidChrome(isDark: boolean): void {
@@ -267,9 +269,11 @@ export function initDeepLinks(): void {
   };
 
   void CapApp.addListener('appUrlOpen', (event) => open(event.url)).catch(() => {});
-  void CapApp.getLaunchUrl()
-    .then((result) => open(result?.url ?? null))
-    .catch(() => {});
+  if (typeof CapApp.getLaunchUrl === 'function') {
+    void CapApp.getLaunchUrl()
+      .then((result) => open(result?.url ?? null))
+      .catch(() => {});
+  }
 }
 
 export function initAppearanceAndKeyboard(store: PersonalStore = defaultStore): void {
