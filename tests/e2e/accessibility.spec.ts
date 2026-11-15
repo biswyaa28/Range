@@ -154,6 +154,14 @@ for (const viewport of viewports) {
         await page.keyboard.press('Escape');
         await expect(focus).toBeHidden();
 
+        await page.getByRole('radio', { name: 'Prompter', exact: true }).click();
+        await page.getByRole('button', { name: 'Open reading mode' }).click();
+        const prompter = page.getByRole('dialog', { name: 'Prompter reading mode' });
+        await expect(prompter).toBeVisible();
+        await expectAxeClean(page);
+        await page.keyboard.press('Escape');
+        await expect(prompter).toBeHidden();
+
         if (viewport.name === 'mobile') {
           await page.goto('/#home');
           await expect(page.locator('main h1').first()).toBeVisible();

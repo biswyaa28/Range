@@ -179,3 +179,25 @@ test.describe('mobile more sheet', () => {
     await expect(page).toHaveTitle('Settings · Personal OS');
   });
 });
+
+test.describe('prompter', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(true)(page);
+  });
+
+  test('prompter traps focus and Escape exits', async ({ page }) => {
+    await page.goto('/#focus');
+    await page.getByRole('radio', { name: 'Prompter', exact: true }).click();
+    await page.getByRole('button', { name: 'Open reading mode' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Prompter reading mode' });
+    await expect(dialog).toBeVisible();
+    await page.waitForTimeout(150);
+    await expectFocusInside(page);
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('Tab');
+      await expectFocusInside(page);
+    }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+  });
+});

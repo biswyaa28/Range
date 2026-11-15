@@ -194,8 +194,13 @@ const AppShell: React.FC = () => {
 
     let attempts = 0;
     const focusHeading = (): void => {
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       const main = document.getElementById('main');
-      const heading = main?.querySelector('h1') ?? null;
+      if (!main || main.dataset['route'] !== rawRoute) {
+        if (attempts++ < 20) window.setTimeout(focusHeading, 32);
+        return;
+      }
+      const heading = main.querySelector('h1');
       if (!heading && attempts++ < 20) {
         window.setTimeout(focusHeading, 32);
         return;
@@ -205,8 +210,8 @@ const AppShell: React.FC = () => {
       target.setAttribute('tabindex', '-1');
       target.focus({ preventScroll: true });
     };
-    // Give the lazy route a beat to replace the previous view's heading.
-    window.setTimeout(focusHeading, 120);
+    // Wait out the view transition so focus lands on the final heading.
+    window.setTimeout(focusHeading, 360);
   }, [rawRoute]);
 
   const openCheatSheet = useCallback(() => setCheatOpen(true), []);
@@ -274,7 +279,7 @@ const AppShell: React.FC = () => {
         <Breadcrumb route={rawRoute} />
       </header>
 
-      <main className="view" id="main" tabIndex={-1}>
+      <main className="view" id="main" tabIndex={-1} data-route={rawRoute}>
         <StorageNotice />
         <ErrorBoundary resetKey={route}>
           <Suspense fallback={<div className="view-loading" role="status">Loading view…</div>}>

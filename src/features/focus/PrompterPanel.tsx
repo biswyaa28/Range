@@ -40,6 +40,7 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
   const [speed, setSpeed] = useState(initialSpeed);
   const [mirror, setMirror] = useState(false);
 
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
   const playBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -89,7 +90,14 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
       node.style.transform = `translate(-50%, ${base - offsetRef.current}px)`;
     };
     rafRef.current = requestAnimationFrame(loop);
-    const focusTimer = window.setTimeout(() => playBtnRef.current?.focus(), 60);
+    const focusTimer = window.setTimeout(() => {
+      const play = playBtnRef.current;
+      if (play && !play.disabled) {
+        play.focus();
+        return;
+      }
+      overlayRef.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+    }, 60);
     return () => {
       window.clearTimeout(focusTimer);
       cancelAnimationFrame(rafRef.current);
@@ -147,8 +155,34 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [bumpSize, bumpSpeed, close]);
 
+  const trapTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab' || !overlayRef.current) return;
+    const focusable = Array.from(
+      overlayRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
+
   return (
-    <div className="pr-overlay" role="dialog" aria-modal="true" aria-label="Prompter reading mode">
+    <div
+      ref={overlayRef}
+      className="pr-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Prompter reading mode"
+      onKeyDown={trapTab}
+    >
       <div className="pr-hint">Space play/pause · +/− size · ←→ speed · M mirror · Esc exit</div>
       <div className={`pr-stage${mirror ? ' mirror' : ''}`} ref={stageRef}>
         <div className="pr-mark left" aria-hidden="true" />
@@ -172,20 +206,20 @@ const ReadingOverlay: React.FC<ReadingOverlayProps> = ({
           <Icon name={playing ? 'pause' : 'play'} />
         </button>
         <div className="pr-group">
-          <button type="button" className="pr-btn" onClick={() => bumpSize(-8)} aria-label="Smaller text">
+          <button type="button" className="pr-btn" onClick={() => bumpSize(-8)} aria-label="A− smaller text">
             A−
           </button>
           <span>{size} px</span>
-          <button type="button" className="pr-btn" onClick={() => bumpSize(8)} aria-label="Larger text">
+          <button type="button" className="pr-btn" onClick={() => bumpSize(8)} aria-label="A+ larger text">
             A+
           </button>
         </div>
         <div className="pr-group">
-          <button type="button" className="pr-btn" onClick={() => bumpSpeed(-1)} aria-label="Slower">
+          <button type="button" className="pr-btn" onClick={() => bumpSpeed(-1)} aria-label="S− slower">
             S−
           </button>
           <span>Speed {speed}</span>
-          <button type="button" className="pr-btn" onClick={() => bumpSpeed(1)} aria-label="Faster">
+          <button type="button" className="pr-btn" onClick={() => bumpSpeed(1)} aria-label="S+ faster">
             S+
           </button>
         </div>
