@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Android AAB + APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Build release
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: cd android && chmod +x gradlew && ./gradlew bundleRelease assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/release/*.apk
+
+  macos:
+    name: macOS app + dmg
+    runs-on: macos-latest
+    env:
+      SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run build
+      - name: Build unsigned app bundle
+        if: env.SIGNING_KEY == ''
+        run: npx tauri build --config src-tauri/tauri.unsigned.conf.json
+      - name: Build signed updater bundle
+        if: env.SIGNING_KEY != ''
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: npx tauri build
+      - name: Collect artifacts and latest.json
+        run: |
+          set -euo pipefail
+          OUT=release-artifacts
+          mkdir -p "$OUT"
+          cp src-tauri/target/release/bundle/dmg/*.dmg "$OUT/" || true
+          cp -R src-tauri/target/release/bundle/macos/*.app "$OUT/" || true
+          if [ -f "src-tauri/target/release/bundle/macos/Personal OS.app.tar.gz" ]; then
+            cp "src-tauri/target/release/bundle/macos/Personal OS.app.tar.gz" "$OUT/Personal-OS.app.tar.gz"
+            cp "src-tauri/target/release/bundle/macos/Personal OS.app.tar.gz.sig" "$OUT/Personal-OS.app.tar.gz.sig"
+            VERSION=$(node -p "require('./package.json').version")
+            node scripts/make-latest-json.mjs "$OUT" "$VERSION" "${{ github.repository }}" "${{ github.ref_name }}" "$OUT/latest.json"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: release-artifacts/*
+
+  publish:
+    name: GitHub Release
+    needs: [android, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
