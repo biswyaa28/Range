@@ -8,10 +8,11 @@ yarn-error.log*
 # Dependencies
 node_modules/
 
-# Agent tooling and local state
+# Agent tooling and local state (incl. skills lock file)
 .agents/
 .claude/
 .hermes/
+skills-lock.json
 
 # Production build
 dist/
