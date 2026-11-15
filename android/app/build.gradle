@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Release signing is optional. Provide android/keystore.properties (git-ignored)
+// or the ANDROID_KEYSTORE_* environment variables. Without either, release
+// builds stay unsigned with a warning so CI and local smoke builds still work.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+def releaseKeystorePath = System.getenv('ANDROID_KEYSTORE_PATH') ?: keystoreProperties.getProperty('storeFile')
+def releaseKeystorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: keystoreProperties.getProperty('storePassword')
+def releaseKeyAlias = System.getenv('ANDROID_KEY_ALIAS') ?: keystoreProperties.getProperty('keyAlias')
+def releaseKeyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: keystoreProperties.getProperty('keyPassword')
+def hasReleaseKeystore = releaseKeystorePath && releaseKeystorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace = "com.biswyaa.personalos"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -22,12 +37,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile rootProject.file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+if (!hasReleaseKeystore) {
+    logger.warn('Release signing not configured (no android/keystore.properties and no ANDROID_KEYSTORE_* env vars).')
+    logger.warn('Release builds will be UNSIGNED. See docs/ANDROID_RELEASE.md.')
 }
 
 repositories {

@@ -76,10 +76,17 @@ if (manifests.length === 0) {
   );
 }
 
+const variant = process.env.MANIFEST_VARIANT ?? 'debug';
 const candidates = manifests.filter(
-  (candidate) => relative(intermediatesDir, candidate).split(sep)[1] === 'debug',
+  (candidate) => relative(intermediatesDir, candidate).split(sep)[1] === variant,
 );
-const newest = (candidates.length > 0 ? candidates : manifests).reduce((latest, candidate) =>
+if (candidates.length === 0) {
+  throw new Error(
+    `No merged ${variant} manifest found. Run ` +
+      `\`cd android && ./gradlew assemble${variant === 'release' ? 'Release' : 'Debug'}\` first.`,
+  );
+}
+const newest = candidates.reduce((latest, candidate) =>
   statSync(candidate).mtimeMs > statSync(latest).mtimeMs ? candidate : latest,
 );
 const manifest = readFileSync(newest, 'utf8');

@@ -41,3 +41,8 @@ src-tauri/target/
 test-results/
 playwright-report/
 blob-report/
+
+# Android release signing
+android/keystore.properties
+android/*.jks
+android/*.keystore
