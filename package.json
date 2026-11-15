@@ -1,7 +1,7 @@
 {
   "name": "personal-os",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,9 @@
     "check:health-manifest": "node scripts/check-health-manifest.mjs",
     "android:release": "cd android && ./gradlew bundleRelease assembleRelease",
     "e2e": "playwright test",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-motion-css.mjs && npm run e2e"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && node scripts/check-motion-css.mjs && npm run e2e",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.1",

@@ -22,8 +22,8 @@ android {
         applicationId "com.biswyaa.personalos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 10000
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Health Connect declares a privacy policy URL. Keep it out of source so

@@ -51,7 +51,7 @@ test.describe('Settings desktop', () => {
     await page.goto('/#settings');
     await expectNoOverflow(page);
     await expect(page.locator('.settings-about').first()).toContainText('Local-first');
-    await expect(page.locator('.settings-about').first()).toContainText('v0.1.0');
+    await expect(page.locator('.settings-about').first()).toContainText('v1.0.0');
 
     await page.click('button.seg-btn:has-text("Light")');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
