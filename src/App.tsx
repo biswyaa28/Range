@@ -1,5 +1,5 @@
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
-import { useHashRoute, useShortcuts } from '@/hooks';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useHashRoute, useShortcuts, type AppRoute } from '@/hooks';
 import { applySettings, settingsStore, useSettings, useStore } from '@/store';
 import { ACCENTS } from '@/domain/color';
 import { isHexColor } from '@/domain/settings';
@@ -8,6 +8,7 @@ import { ToastProvider } from '@/ui/Toast';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { TopNav, BottomTabBar, Breadcrumb, StorageNotice } from '@/features/shell';
 import { watchNotifications } from '@/features/settings/notificationSync';
+import { routeAnnouncement, routeTitle } from '@/features/shell/routeTitles';
 
 const HomeView = React.lazy(() =>
   import('@/features/home/HomeView').then((module) => ({ default: module.HomeView })),
@@ -76,6 +77,8 @@ const AppShell: React.FC = () => {
   const legacyName = useStore((s) => s.profile.name);
   const appSettings = useSettings();
   const [cheatOpen, setCheatOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
+  const previousRoute = useRef<AppRoute>(rawRoute);
   // First run only: a later data wipe stays on the current screen until reload.
   const [onboardingOpen, setOnboardingOpen] = useState(() => !profile.onboarded);
 
@@ -150,7 +153,7 @@ const AppShell: React.FC = () => {
         }
 
         document.body.classList.toggle('scrolled', y > 56);
-        const v = document.getElementById('view');
+        const v = document.getElementById('main');
         if (v) v.classList.toggle('scrolled-hero', y > 90);
 
         const dy = y - navLastY;
@@ -172,6 +175,39 @@ const AppShell: React.FC = () => {
       if (scrollRaf) cancelAnimationFrame(scrollRaf);
     };
   }, []);
+
+  // Titles and route announcements, plus focus on the new view's heading.
+  // Skipped when a modal owns focus or the user is typing (including
+  // browser-back into an open dialog).
+  useEffect(() => {
+    document.title = routeTitle(rawRoute);
+    setAnnouncement(routeAnnouncement(rawRoute));
+
+    if (previousRoute.current === rawRoute) return;
+    previousRoute.current = rawRoute;
+
+    const active = document.activeElement;
+    const typing =
+      active instanceof HTMLElement &&
+      (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+    if (typing || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+
+    let attempts = 0;
+    const focusHeading = (): void => {
+      const main = document.getElementById('main');
+      const heading = main?.querySelector('h1') ?? null;
+      if (!heading && attempts++ < 20) {
+        window.setTimeout(focusHeading, 32);
+        return;
+      }
+      const target = heading ?? main;
+      if (!target) return;
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+    };
+    // Give the lazy route a beat to replace the previous view's heading.
+    window.setTimeout(focusHeading, 120);
+  }, [rawRoute]);
 
   const openCheatSheet = useCallback(() => setCheatOpen(true), []);
   const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
@@ -222,6 +258,12 @@ const AppShell: React.FC = () => {
 
   return (
     <>
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
       <header className="topwrap">
         <TopNav
           currentRoute={route}
@@ -232,7 +274,7 @@ const AppShell: React.FC = () => {
         <Breadcrumb route={rawRoute} />
       </header>
 
-      <main className="view" id="view">
+      <main className="view" id="main" tabIndex={-1}>
         <StorageNotice />
         <ErrorBoundary resetKey={route}>
           <Suspense fallback={<div className="view-loading" role="status">Loading view…</div>}>

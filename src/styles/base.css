@@ -117,3 +117,29 @@ html:hover::-webkit-scrollbar-thumb,
     scale: none;
   }
 }
+
+/* First focusable element: hidden until keyboard users reach it. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  transform: translateY(-200%);
+  transition: transform .15s var(--ease-out);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Programmatically focused headings must not flash a focus ring. */
+main h1:focus,
+main:focus {
+  outline: none;
+}
