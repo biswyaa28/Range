@@ -14,6 +14,7 @@ import type { HapticsConfig, ThemeMode } from '@/domain/types';
 import type { NotificationPermissionState } from '@/platform';
 import { notifications, platformName } from '@/platform';
 import { checkForUpdates, type UpdateProgress } from '@/platform/updater';
+import { copyDiagnostics } from '@/lib/crashReport';
 import {
   notificationPermission,
   requestNotificationPermission,
@@ -722,6 +723,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       current.profile.name = name;
     });
     settingsStore.set({ identity: { name } });
+  };
+
+  const setPrivacy = (patch: Partial<Settings['privacy']>): void => {
+    settingsStore.set({ privacy: patch });
   };
 
   const setNotifications = (patch: NotificationSettingsPatch): void => {
@@ -1888,6 +1893,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           description: 'The key stays on this device and is never written to Firebase.',
           keywords: 'privacy secret key token',
           control: <span className="chip">Device only</span>,
+        },
+      ],
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy',
+      icon: 'eye',
+      keywords: 'crash reports diagnostics telemetry anonymous opt in',
+      items: [
+        {
+          id: 'privacy-crash',
+          title: 'Send anonymous crash reports',
+          description:
+            'Off by default. When on, a crash sends only the error name, message, stack, app version and platform — never notes, titles, emails or keys.',
+          keywords: 'crash error telemetry diagnostics',
+          wide: true,
+          control: (
+            <Switch
+              checked={settings.privacy.crashReports}
+              onChange={(checked) => setPrivacy({ crashReports: checked })}
+              aria-label="Send anonymous crash reports"
+            />
+          ),
+        },
+        {
+          id: 'privacy-diagnostics',
+          title: 'Copy diagnostics',
+          description: 'Copy the redacted error details to the clipboard instead of sending them.',
+          keywords: 'copy debug support local',
+          control: (
+            <Button
+              variant="secondary"
+              data-action="copy-diagnostics"
+              onClick={() => {
+                void copyDiagnostics().then((copied) => {
+                  toast.showToast(copied ? 'Diagnostics copied' : 'Could not copy diagnostics');
+                });
+              }}
+            >
+              Copy diagnostics
+            </Button>
+          ),
         },
       ],
     },

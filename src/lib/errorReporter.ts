@@ -40,6 +40,7 @@ function report(source: string, reason: unknown): void {
     if (isBenignError(text)) return;
 
     console.error(`[personalOS] ${source}: ${redact(text)}`);
+    void import('./crashReport').then((module) => module.sendCrashReport(reason));
 
     const now = Date.now();
     if (now - lastToastAt < TOAST_COOLDOWN_MS) return;

@@ -139,8 +139,14 @@ export interface Settings {
   rhythm: RhythmSettings;
   focus: FocusDefaults;
   onboarding: OnboardingState;
+  privacy: PrivacySettings;
   /** Last local or remote mutation, used for last-write-wins sync. */
   updatedAt: string;
+}
+
+export interface PrivacySettings {
+  /** Opt-in; nothing leaves the device unless this is true. */
+  crashReports: boolean;
 }
 
 export interface NotificationSettingsPatch {
@@ -171,6 +177,7 @@ export interface SettingsPatch {
   rhythm?: Partial<RhythmSettings>;
   focus?: Partial<FocusDefaults>;
   onboarding?: Partial<OnboardingState>;
+  privacy?: Partial<PrivacySettings>;
 }
 
 export const THEME_PREFERENCES: readonly ThemePreference[] = ['light', 'dark', 'system'];
@@ -488,8 +495,14 @@ export function defaultSettings(): Settings {
       breakMinutes: focusPreset[1],
     },
     onboarding: { completed: false, completedAt: null, timetable: null },
+    privacy: { crashReports: false },
     updatedAt: EPOCH_TS,
   };
+}
+
+function normalizePrivacy(raw: unknown, base: PrivacySettings): PrivacySettings {
+  const src = isRecord(raw) ? raw : {};
+  return { crashReports: pickBoolean(src['crashReports'], base.crashReports) };
 }
 
 /** Fills gaps, rejects invalid values and returns a detached settings object. */
@@ -521,6 +534,7 @@ export function normalizeSettings(raw: unknown): Settings {
     rhythm: normalizeRhythm(src['rhythm'], base.rhythm),
     focus: normalizeFocus(src['focus'], base.focus),
     onboarding: normalizeOnboarding(src['onboarding'], base.onboarding),
+    privacy: normalizePrivacy(src['privacy'], base.privacy),
     updatedAt: normTs(src['updatedAt']) ?? base.updatedAt,
   };
 }
@@ -542,6 +556,7 @@ export function cloneSettings(settings: Settings): Settings {
     rhythm: { ...settings.rhythm },
     focus: { ...settings.focus },
     onboarding: { ...settings.onboarding },
+    privacy: { ...settings.privacy },
   };
 }
 
@@ -577,6 +592,7 @@ export function patchSettings(base: Settings, patch: SettingsPatch): Settings {
     rhythm: { ...base.rhythm, ...patch.rhythm },
     focus: { ...base.focus, ...patch.focus },
     onboarding: { ...base.onboarding, ...patch.onboarding },
+    privacy: { ...base.privacy, ...patch.privacy },
     updatedAt: base.updatedAt,
   });
 }

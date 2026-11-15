@@ -118,11 +118,36 @@
         </li>
       </ul>
 
+      <h2>Optional crash reports</h2>
+      <p>
+        Crash reporting is off by default. If you turn on
+        <strong>Settings → Privacy → Send anonymous crash reports</strong>, the
+        app sends exactly this to the configured crash collector:
+      </p>
+      <ul>
+        <li>
+          the error name, message and stack trace, with emails, tokens, query
+          strings and long identifiers replaced by <code>[email]</code>,
+          <code>[redacted]</code>;
+        </li>
+        <li>the app version;</li>
+        <li>the platform (<code>web</code>, <code>macOS</code> or <code>Android</code>).</li>
+      </ul>
+      <p>
+        Nothing else is sent: no notes, task or deadline titles, profile name,
+        email, API keys, device identifiers, free-form text or screenshots. There
+        is no third-party analytics SDK. <strong>Copy diagnostics</strong> copies
+        the same redacted JSON to your clipboard without any network request. If
+        the build has no collector configured
+        (<code>VITE_CRASH_REPORT_ENDPOINT</code>), enabling the toggle sends
+        nothing.
+      </p>
+
       <h2>What we never do</h2>
       <ul>
         <li>No selling or renting of your data.</li>
         <li>No advertising or marketing use.</li>
-        <li>No third-party analytics or crash-reporting SDKs.</li>
+        <li>No third-party analytics, advertising or tracking SDKs.</li>
         <li>
           No server of our own: the app talks to Firebase and, if you enable it,
           the AI provider you chose.

@@ -59,11 +59,28 @@ calories burned from Health Connect.
 - You can revoke access at any time in the Health Connect app. Because the app
   keeps no copy, there is no separate health-data record to delete.
 
+## Optional crash reports
+
+Crash reporting is off by default. If you turn on **Settings → Privacy → Send
+anonymous crash reports**, the app sends exactly this to the configured crash
+collector:
+
+- the error name, message and stack trace, with emails, tokens, query strings
+  and long identifiers replaced by `[email]`, `[redacted]`;
+- the app version;
+- the platform (`web`, `macOS` or `Android`).
+
+Nothing else is sent: no notes, task or deadline titles, profile name, email,
+API keys, device identifiers, free-form text or screenshots. There is no
+third-party analytics SDK. **Copy diagnostics** copies the same redacted JSON
+to your clipboard without any network request. If the build has no collector
+configured (`VITE_CRASH_REPORT_ENDPOINT`), enabling the toggle sends nothing.
+
 ## What we never do
 
 - No selling or renting of your data.
 - No advertising or marketing use.
-- No third-party analytics or crash-reporting SDKs.
+- No third-party analytics, advertising or tracking SDKs.
 - No server of our own: the app talks to Firebase and, if you enable it, the
   AI provider you chose.
 
