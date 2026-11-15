@@ -856,6 +856,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
       <div className={`home${railIds.length ? '' : ' no-rail'}`}>
         <div className="home-main">
           <SmartGreeting />
+          <h2 className="sr-only">Home overview</h2>
           <SearchBar editing={editing} onToggleEdit={toggleEdit} />
 
           {editing && (

@@ -28,6 +28,13 @@ const NoteRow: React.FC<NoteRowProps> = ({ note, active, onSelect, onDelete }) =
   const swipeOpacity = Math.min(1, Math.abs(offset) / 64).toFixed(2);
   const firstLine = String(note.body || '').split('\n')[0] || 'Empty note';
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      onDelete(note.id);
+    }
+  };
+
   return (
     <div className="notes-item-wrap">
       <button
@@ -38,6 +45,7 @@ const NoteRow: React.FC<NoteRowProps> = ({ note, active, onSelect, onDelete }) =
         data-id={note.id}
         style={{ transform }}
         onClick={() => onSelect(note.id)}
+        onKeyDown={handleKeyDown}
         aria-selected={active}
         {...handlers}
       >
@@ -305,7 +313,7 @@ export const NotesView: React.FC = () => {
         {/* Left pane: Notes list */}
         <div className="panel notes-list">
           <div className="nl-search">
-            <div className="field">
+            <div className="field nl-search-field">
               <label htmlFor="notes-search" className="sr-only">
                 Search notes
               </label>
@@ -314,7 +322,23 @@ export const NotesView: React.FC = () => {
                 placeholder="Search notes…"
                 value={notesQuery}
                 onChange={(e) => setNotesQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && notesQuery) {
+                    e.preventDefault();
+                    setNotesQuery('');
+                  }
+                }}
               />
+              {notesQuery && (
+                <button
+                  type="button"
+                  className="nl-search-clear"
+                  aria-label="Clear search"
+                  onClick={() => setNotesQuery('')}
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -322,7 +346,7 @@ export const NotesView: React.FC = () => {
               data-action="note-new"
               onClick={handleNewNote}
             >
-              <Icon name="plus" /> NEW
+              <Icon name="plus" /> New
             </button>
           </div>
 
@@ -429,7 +453,7 @@ export const NotesView: React.FC = () => {
         ) : (
           <div className="panel notes-editor">
             <div className="empty" style={{ border: 'none' }}>
-              <h3>No note selected</h3>
+              <h2>No note selected</h2>
               <p className="hint">Pick a note from the list or create a new one.</p>
             </div>
           </div>

@@ -115,7 +115,7 @@ test.describe('Plan calendar drag desktop', () => {
       name: 'Dragged Block, 08:00 to 09:30, personal',
     });
     await expect(movedBlock).toBeVisible();
-    await expect(page.getByRole('status')).toContainText(
+    await expect(page.locator('[role="status"]').last()).toContainText(
       'Dragged Block moved to 08:00 to 09:30 on',
     );
 
@@ -139,7 +139,7 @@ test.describe('Plan calendar drag desktop', () => {
       name: 'Dragged Block, 08:00 to 10:00, personal',
     });
     await expect(resizedBlock).toBeVisible();
-    await expect(page.getByRole('status')).toHaveText(
+    await expect(page.locator('[role="status"]').last()).toHaveText(
       'Dragged Block resized to 08:00 to 10:00',
     );
 
@@ -293,7 +293,7 @@ test.describe('Plan calendar drag mobile (390px)', () => {
     await expect(resized).toBeVisible();
 
     // Keyboard cross-day move in the week pager.
-    const status = page.getByRole('status');
+    const status = page.locator('[role="status"]').last();
     await resized.focus();
     await page.keyboard.press('ArrowRight');
     await expect(status).toContainText('Touch Block moved to 08:00 to 10:00');

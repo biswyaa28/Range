@@ -98,10 +98,10 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
   onDismiss,
 }) => (
   <article className="chat-proposal" data-proposal={proposal.name}>
-    <header className="chat-proposal-head">
+    <div className="chat-proposal-head">
       <span className="chat-proposal-kicker">Proposed change</span>
       <h3 className="chat-proposal-title">{proposal.preview.title}</h3>
-    </header>
+    </div>
     <p className="chat-proposal-summary">{proposal.preview.summary}</p>
     <dl className="chat-proposal-changes">
       {proposal.preview.changes.map((change, index) => (
@@ -200,7 +200,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
     openerRef.current = document.activeElement as HTMLElement | null;
     Haptics.tap();
     document.body.classList.add('chat-open');
-    const timer = window.setTimeout(() => textareaRef.current?.focus(), 40);
+    const timer = window.setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea && !textarea.disabled) {
+        textarea.focus();
+        return;
+      }
+      // Without a provider the composer is disabled; keep focus in the dialog.
+      panelRef.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+    }, 40);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -485,7 +493,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
         aria-labelledby="chat-title"
         onKeyDown={handleTrap}
       >
-        <header className="chat-head">
+        <div className="chat-head">
           <div className="chat-heading">
             <span className="chat-mark">
               <Icon name="chat" size={17} />
@@ -522,7 +530,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
               <Icon name="x" size={17} />
             </button>
           </div>
-        </header>
+        </div>
 
         {(keyMissing || showKeyPrompt) && (
           <div className="chat-setup" data-chat-setup>

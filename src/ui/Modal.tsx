@@ -117,7 +117,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-modal="true"
         aria-label={title || ariaLabel || 'Dialog'}
       >
-        <header className="modal-header">
+        <div className="modal-header">
           {title ? <h2 className="modal-title">{title}</h2> : <span />}
           <button
             type="button"
@@ -127,7 +127,7 @@ export const Modal: React.FC<ModalProps> = ({
           >
             <Icon name="x" size={18} />
           </button>
-        </header>
+        </div>
         <div className="modal-body">{children}</div>
       </div>
     </div>

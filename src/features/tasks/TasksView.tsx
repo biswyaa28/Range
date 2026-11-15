@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import type { Task, TaskPriority } from '@/domain/types';
-import { todayISO, diffDays, fmtShort, formatTimeHM } from '@/domain/dates';
+import type { Task, TaskPriority, Block } from '@/domain/types';
+import { todayISO, addDays, diffDays, fmtShort, formatTimeHM, DAY_SHORT } from '@/domain/dates';
 import { parseQuickAdd } from '@/domain/quickAdd';
+import { recomputeDayStats } from '@/domain/stats';
 import {
   useStore,
   useSettings,
@@ -99,6 +100,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, o
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       onToggle(task.id, tickboxRef.current ?? undefined);
+    } else if (e.key === 'e' || e.key === 'E') {
+      e.preventDefault();
+      onEdit(task);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       onDelete(task.id);
@@ -146,12 +150,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, o
         <Icon name="check" />
       </button>
 
-      <div
-        className="task-main"
+      <button
+        type="button"
+        className="task-main task-edit-btn"
         onClick={() => onEdit(task)}
-        style={{ cursor: 'pointer' }}
-        role="button"
-        tabIndex={-1}
         aria-label={`Edit task: ${task.title}`}
       >
         <div className="task-title">{task.title}</div>
@@ -160,7 +162,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, popped, onToggle, onDelete, o
           {task.category ? <span className="chip">{catInfo(task.category).label}</span> : null}
           <span className={`chip${task.priority === 'high' ? ' red' : ''}`}>{p.label}</span>
         </div>
-      </div>
+      </button>
 
       <button
         type="button"
@@ -374,6 +376,33 @@ export const TasksView: React.FC = () => {
     toast.showToast('Task added');
   };
 
+  const addBlockFromQuickPreview = () => {
+    if (!quickBlock) return;
+    store.set((state) => {
+      const newBlock = stampNewRecord<Partial<Block>>(
+        {
+          title: quickBlock.title,
+          day: quickBlock.day,
+          start: quickBlock.start,
+          end: quickBlock.end,
+          category: quickBlock.category,
+          done: false,
+          doneDates: [],
+          source: 'personal',
+        },
+        state.deviceId,
+        () => crypto.randomUUID(),
+      ) as Block;
+      state.blocks.push(newBlock);
+      recomputeDayStats(state.dayStats, state.blocks, todayISO());
+    });
+    setQuickInput('');
+    Haptics.success();
+    toast.showToast('Schedule block added to Plan', 'Open Plan', () => {
+      window.location.hash = '#plan';
+    });
+  };
+
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickPreview || !quickPreview.title) {
@@ -464,9 +493,19 @@ export const TasksView: React.FC = () => {
           <span>Schedule block:</span>
           <span className="chip solid">{quickBlock.title}</span>
           <span className="chip">
-            {formatTimeHM(quickBlock.start, settings.clockFormat)}–
+            {typeof quickBlock.day === 'string'
+              ? fmtShort(quickBlock.day)
+              : DAY_SHORT[quickBlock.day] ?? 'Today'}{' '}
+            · {formatTimeHM(quickBlock.start, settings.clockFormat)}–
             {formatTimeHM(quickBlock.end, settings.clockFormat)}
           </span>
+          <button
+            type="button"
+            className="btn sm green"
+            onClick={addBlockFromQuickPreview}
+          >
+            Add block to Plan
+          </button>
           <span>Add it from Plan.</span>
         </div>
       )}
@@ -494,10 +533,10 @@ export const TasksView: React.FC = () => {
           >
             <option value="">No date</option>
             <option value={todayISO()}>Today</option>
-            <option value={todayISO() ? fmtShort(todayISO()) && new Date(Date.now() + 86400000).toISOString().split('T')[0] : ''}>
+            <option value={addDays(todayISO(), 1)}>
               Tomorrow
             </option>
-            <option value={new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]}>
+            <option value={addDays(todayISO(), 7)}>
               Next week
             </option>
           </select>
@@ -582,7 +621,7 @@ export const TasksView: React.FC = () => {
           ))
         ) : (
           <div className="empty" role="listitem">
-            <h3>No tasks here</h3>
+            <h2>No tasks here</h2>
             <p className="hint">
               {filter === 'all'
                 ? 'Add your first task with the form above.'
