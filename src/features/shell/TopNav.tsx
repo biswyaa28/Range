@@ -12,6 +12,7 @@ import { openChat } from '@/features/chat/chatBus';
 import { useSync } from '@/sync/useSync';
 import type { SyncState } from '@/sync/types';
 import { CRUMB_MAP } from './Breadcrumb';
+import { shortcutKey } from '@/lib/shortcutLabels';
 import './TopNav.css';
 
 export interface TopNavProps {
@@ -227,13 +228,13 @@ export const TopNav: React.FC<TopNavProps> = ({
           type="button"
           className="sbtn"
           onClick={onOpenSearch}
-          aria-label="Search, Ctrl/Cmd K"
+          aria-label={`Search, ${shortcutKey('Ctrl')} K`}
         >
           <span className="sic">
             <Icon name="search" />
           </span>
           <span className="kbd">
-            <Kbd>Ctrl/Cmd K</Kbd>
+            <Kbd>{shortcutKey('Ctrl')} K</Kbd>
           </span>
         </button>
 
