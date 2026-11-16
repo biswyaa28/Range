@@ -180,9 +180,9 @@ Rules verification gap closed: `JAVA_HOME=/opt/homebrew/opt/openjdk@21 npm run t
 | Android widget / share | **DONE (device UNVERIFIED)** | Today widget (next 3 blocks + due tasks) reads a local SharedPreferences snapshot; shared text becomes a quick-added task. Manual steps in `docs/ANDROID_WIDGET.md`. |
 | Prompter | **DONE** | `features/focus/PrompterPanel.tsx` with keyboard controls and reading mode. |
 | Noise player (white/brown/pink) | **DONE** | `engines/noise.ts` synthesises all three live, no assets/network. |
-| Gmail summary via `gog` | **MISSING** | No Gmail/`gog` code anywhere; `src/integrations/` is README-only. |
-| Assignments/exams/announcements fetch | **MISSING** | Deadlines are manual (`DeadlinesView.tsx`); no fetch/import source. |
-| Google Classroom (view, submit) | **MISSING** | No Classroom code or OAuth scopes beyond sign-in. |
+| Gmail summary via `gog` | **DONE (REST, not `gog`)** | `gog` v0.47.1 exists on the Mac but is not portable to Android, so the app uses the Gmail REST API directly. Local extractor, sender/label filters, one-tap add, opt-in AI preview (`377010f`, `ab935db`). |
+| Assignments/exams/announcements fetch | **DONE** | Classroom coursework, submission state and 14-day announcements are cached on device and shown in Inbox, Deadlines and Plan; exams are keyword-tagged (`3359b7c`, `377010f`). |
+| Google Classroom (view, submit) | **DONE (submit PARTIAL)** | Read-only courses, coursework and announcement scopes, external `alternateLink` per item. In-app submission is impossible with the Classroom API; the UI explains this (`3359b7c`, `ab935db`). |
 | Google Fit & Samsung Health | **PARTIAL** | Health Connect read-only steps/sleep/active calories on Android (`platform/healthConnect.ts`); no Fit API, no Samsung SDK (Samsung Health only via Health Connect sync). |
 | Android↔Mac sync | **DONE** | LWW + tombstones + deviceId tiebreak + incremental pull (`src/sync/*`, `src/store/merge.ts`); health data never syncs. |
 | Settings & customisation | **DONE** | Theme/accent/font/density/motion/home widgets, week start, clock format and local notifications all drive behaviour (UX-01/02/03). |
@@ -236,6 +236,9 @@ AND-01 (keystore/env signing, AAB + APK, R8), AND-02 (native insets + safe-area 
 
 **Batch 5 — performance and new value — DONE 16 Nov 2026**
 DATA-03 (paged pulls), PERF-01 (virtualized lists), FEAT-01 (search), FEAT-02 (Markdown/export), FEAT-03 (habits), FEAT-04 (widget/share), SEC-03 (passphrase vault). AI-02 (transcript protection) remains open. Manual checks: Android widget/share on a device.
+
+**Batch 6 — Google integrations — DONE 16 Nov 2026**
+INT-01 (`ab935db`) incremental read-only auth, secure token refresh/revoke and reconnect state; INT-02 (`3359b7c`) Classroom courses/coursework/submission state/announcements with exam tagging and read-only badges; INT-03 (`377010f`) Gmail digest with local IST/relative-date extraction and opt-in AI payload preview; INT-04 (`e1a4049`) Inbox UI, Home/More entry points, reminders, backup opt-in and privacy docs. `gog` was checked but rejected because the CLI cannot run in the Android build; REST APIs are used. Submit remains PARTIAL by API limitation. Manual checks: Google Cloud project, consent screen, OAuth clients and a device run.
 
 ---
 
