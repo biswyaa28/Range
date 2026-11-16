@@ -73,7 +73,7 @@ describe('onboarding domain helpers', () => {
       aiApiKey: '',
       aiCanReadNotes: true,
     });
-    expect(hydrated.widgets).toHaveLength(11);
+    expect(hydrated.widgets).toHaveLength(12);
   });
 
   it('validates required fields per step', () => {

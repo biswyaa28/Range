@@ -1,4 +1,6 @@
 import { planNotifications } from '@/domain/notifications';
+import { classroomPlanItems } from '@/domain/integrations';
+import { integrationStore } from '@/store/integrationStore';
 import type { NotificationPermissionState } from '@/platform';
 import { notifications } from '@/platform';
 import { settingsStore, store } from '@/store';
@@ -21,11 +23,16 @@ export async function syncNotifications(): Promise<void> {
       return;
     }
     const state = store.get();
+    const integration = integrationStore.get();
     const planned = planNotifications({
       blocks: state.blocks,
       deadlines: state.deadlines,
       tasks: state.tasks,
       habits: state.habits,
+      classroom:
+        integration.settings.classroomNotifications && integration.settings.classroom
+          ? classroomPlanItems(integration.classroom)
+          : [],
       settings,
     });
     await notifications.schedule(
@@ -56,11 +63,13 @@ export function watchNotifications(): () => void {
 
   const unsubscribeSettings = settingsStore.subscribe(schedule);
   const unsubscribeStore = store.subscribe(schedule);
+  const unsubscribeIntegrations = integrationStore.subscribe(schedule);
   schedule();
 
   return () => {
     unsubscribeSettings();
     unsubscribeStore();
+    unsubscribeIntegrations();
     if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
   };
 }

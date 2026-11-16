@@ -322,7 +322,7 @@ describe('Onboarding wizard', () => {
       workMinutes: 25,
       breakMinutes: 5,
     });
-    expect(saved.homeWidgets.order).toHaveLength(11);
+    expect(saved.homeWidgets.order).toHaveLength(12);
   });
 
   it('goes back without advancing the saved step count', () => {

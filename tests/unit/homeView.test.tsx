@@ -127,6 +127,7 @@ describe('home card registry', () => {
       'focus',
       'tasks',
       'upnext',
+      'inbox',
       'deadlines',
       'streak',
       'quick',
@@ -284,6 +285,9 @@ describe('HomeView customization and actions', () => {
 
     fireEvent.change(search, { target: { value: 'zzz-nothing' } });
     expect(within(results()).getByText('No matches.')).toBeDefined();
+
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    expect(search.value).toBe('');
   });
 
   it('rejects unknown stored layout ids and fills missing cards', () => {

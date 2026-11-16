@@ -32,7 +32,7 @@
   <body>
     <main>
       <h1>Privacy policy</h1>
-      <p class="meta"><strong>Personal OS</strong> · Effective 13 November 2026</p>
+      <p class="meta"><strong>Personal OS</strong> · Effective 16 November 2026</p>
 
       <p>
         Personal OS is a local-first personal dashboard. Everything you create is
@@ -71,6 +71,46 @@
         purpose other than storing your account data. Personal OS does not run
         analytics or tracking SDKs.
       </p>
+
+      <h2>Gmail and Google Classroom integrations</h2>
+      <p>
+        Gmail and Classroom are optional, separate from Google sign-in, and off
+        by default. Enabling one asks Google only for the scopes it needs:
+        <code>gmail.readonly</code>, <code>classroom.courses.readonly</code>,
+        <code>classroom.coursework.me.readonly</code>,
+        <code>classroom.announcements.readonly</code>, and
+        <code>classroom.student-submissions.me.readonly</code>. The app never
+        sends, marks, archives or deletes mail, and cannot submit coursework.
+        Gmail is read-only; Classroom submission opens the assignment in Google
+        Classroom instead.
+      </p>
+      <ul>
+        <li>
+          Fetched messages, subjects, snippets, courses, coursework, submission
+          state and announcements are cached <strong>only on this device</strong>.
+          They are never written to Firestore, never synced to another device,
+          and are not part of a backup unless you turn on "Include integration
+          data in backups".
+        </li>
+        <li>
+          OAuth access and refresh tokens are kept in the device's protected
+          store (Keychain on macOS, Keystore-backed storage on Android), never
+          in the app state, Firestore or a backup. Disconnecting calls Google's
+          revoke endpoint and deletes that integration's local cache.
+        </li>
+        <li>
+          If you turn on "Let AI read integration data" (off by default), only
+          the sender, subject and snippet of selected emails are sent to your AI
+          provider. Full email bodies are never sent. The app shows the exact
+          payload before you send it.
+        </li>
+        <li>
+          Apps in Google's Testing publishing status issue refresh tokens that
+          expire after <strong>7 days</strong>. When that happens the token is
+          cleared, cached data stays readable, and the app asks you to
+          reconnect. There is no retry loop.
+        </li>
+      </ul>
 
       <h2>AI assistant</h2>
       <p>

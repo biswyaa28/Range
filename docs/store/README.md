@@ -25,6 +25,8 @@ after you add your own API key.
 - **Focus** — Pomodoro, sounds, a teleprompter and full-screen focus mode.
 - **Insights** — streaks, completion trends and optional Health Connect steps,
   sleep and active calories (read-only, never stored or synced).
+- **Inbox** — optional read-only Gmail deadlines and Classroom coursework and
+  announcements, cached on device only.
 - **Private by design** — no ads, no tracking, no analytics SDK. Sync and AI are
   off until you turn them on.
 
@@ -35,6 +37,7 @@ after you add your own API key.
 - Optional end-to-end account sync (last-write-wins)
 - Optional AI assistant with your own key, notes opt-in
 - Read-only Health Connect insights (Android)
+- Optional read-only Gmail digest and Google Classroom inbox
 - Light/dark themes, 9 accents, keyboard shortcuts, screen-reader support
 - CSV import and full JSON backup/restore
 
@@ -76,15 +79,27 @@ Match `docs/privacy-policy.md` exactly.
 
 - **Data collected:** App activity (timetable/tasks/notes you choose to sync);
   Personal info (name and email, only with Google sign-in); Health data (steps,
-  sleep, active calories, read-only via Health Connect).
+  sleep, active calories, read-only via Health Connect); Gmail metadata and
+  snippets and Classroom courses/coursework/announcements, only if you enable
+  those integrations. Integration data is cached on device and is not synced
+  to Firebase or exported unless you opt in.
 - **Purpose:** App functionality and account sync. No advertising, profiling or
   sale.
 - **Shared with third parties:** Firebase (Google) as hosting/database and Auth
-  provider; Google Gemini only for AI messages you send with the feature on.
-  Health data is never shared.
+  provider; Google Gmail/Classroom APIs only to fetch your own read-only data;
+  Google Gemini only for AI messages you send with the feature on, or the
+  sender/subject/snippet records you explicitly preview and send when
+  "Let AI read integration data" is on. Full email bodies are never sent.
+  Health and integration caches are never synced or sold.
 - **Encrypted in transit:** Yes (HTTPS/WSS).
 - **Deletion:** In-app "Delete my cloud data" deletes every document under
-  `users/{uid}`; local data can be cleared separately.
+  `users/{uid}`; local data can be cleared separately. "Disconnect and delete
+  data" revokes the Google token and deletes that integration's local cache.
+- **Scopes:** `gmail.readonly`, `classroom.courses.readonly`,
+  `classroom.coursework.me.readonly`, `classroom.announcements.readonly`,
+  `classroom.student-submissions.me.readonly`. No send/modify/delete scope.
+- **Token expiry:** Testing-mode Google refresh tokens expire after 7 days;
+  the app clears the token and asks you to reconnect without a retry loop.
 - **Crash reports:** Optional and off by default. Error name/message/stack,
   app version, platform only. No user content.
 - **Data safety / content rating:** no ads, no purchases, no public

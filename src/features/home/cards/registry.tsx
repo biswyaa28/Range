@@ -1,6 +1,7 @@
 import type { BentoCardSize } from '@/domain/types';
 import type { BentoCardSpec } from '@/domain/bentoLayout';
 import type { ReactNode } from 'react';
+import { InboxCard } from './InboxCard';
 import {
   CalendarCard,
   DeadlinesCard,
@@ -58,6 +59,13 @@ export const HOME_CARDS: HomeCardDef[] = [
     defaultSize: 'M',
     allowedSizes: ['S', 'M', 'L', 'XL'],
     render: (size) => <UpNextCard size={size} />,
+  },
+  {
+    id: 'inbox',
+    title: 'Inbox',
+    defaultSize: 'M',
+    allowedSizes: ['S', 'M', 'L', 'XL'],
+    render: (size) => <InboxCard size={size} />,
   },
   {
     id: 'deadlines',

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const routes = ['home', 'plan', 'tasks', 'notes', 'focus', 'insights', 'settings'] as const;
+const routes = ['home', 'plan', 'tasks', 'notes', 'focus', 'insights', 'inbox', 'settings'] as const;
 
 // Verified false positives only: axe's region rule flags decorative
 // off-screen containers that are aria-hidden. Keep this list commented and

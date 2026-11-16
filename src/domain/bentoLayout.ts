@@ -53,16 +53,17 @@ export const BENTO_PRESETS: Record<BentoPresetName, BentoPresetDefinition> = {
   minimal: {
     order: ['progress', 'tasks', 'upnext', 'focus'],
     size: { progress: 'L', tasks: 'L', upnext: 'L', focus: 'L' },
-    hidden: ['weekly', 'deadlines', 'streak', 'quick', 'health', 'calendar', 'timeline'],
+    hidden: ['weekly', 'inbox', 'deadlines', 'streak', 'quick', 'health', 'calendar', 'timeline'],
   },
   balanced: {
-    order: ['progress', 'weekly', 'focus', 'tasks', 'upnext', 'deadlines', 'calendar', 'timeline'],
+    order: ['progress', 'weekly', 'focus', 'tasks', 'upnext', 'inbox', 'deadlines', 'calendar', 'timeline'],
     size: {
       progress: 'M',
       weekly: 'XL',
       focus: 'M',
       tasks: 'M',
       upnext: 'M',
+      inbox: 'M',
       deadlines: 'L',
       calendar: 'L',
       timeline: 'L',

@@ -2,9 +2,10 @@ import { addDays, hmToMin, toISO } from './dates';
 import { blocksForDate } from './recurrence';
 import { habitDone, habitIsScheduled } from './habits';
 import type { Block, Deadline, Habit, Task } from './types';
+import type { ClassroomPlanItem } from './integrations';
 import type { NotificationSettings } from './settings';
 
-export type NotificationKind = 'focus' | 'deadline' | 'task' | 'digest' | 'habit';
+export type NotificationKind = 'focus' | 'deadline' | 'task' | 'digest' | 'habit' | 'classroom';
 
 export interface PlannedNotification {
   id: number;
@@ -20,6 +21,7 @@ export interface NotificationPlanInput {
   deadlines: Deadline[];
   tasks: Task[];
   habits?: Habit[];
+  classroom?: ClassroomPlanItem[];
   settings: NotificationSettings;
   now?: Date;
 }
@@ -66,6 +68,7 @@ export function planNotifications({
   deadlines,
   tasks,
   habits = [],
+  classroom = [],
   settings,
   now = new Date(),
 }: NotificationPlanInput): PlannedNotification[] {
@@ -104,6 +107,17 @@ export function planNotifications({
             title: 'Deadline today',
             body: deadline.title,
             kind: 'deadline',
+          });
+        }
+        for (const item of classroom) {
+          if (item.due !== iso) continue;
+          if (item.state === 'turned-in') continue;
+          out.push({
+            id: notificationId('classroom', `${item.id}:${iso}`),
+            at: at.toISOString(),
+            title: item.exam ? 'Classroom exam today' : 'Classroom due today',
+            body: `${item.course ? `${item.course}: ` : ''}${item.title}`,
+            kind: 'classroom',
           });
         }
       }

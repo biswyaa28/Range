@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const routes = ['home', 'plan', 'tasks', 'notes', 'focus', 'insights', 'settings'] as const;
+const routes = ['home', 'plan', 'tasks', 'notes', 'focus', 'insights', 'inbox', 'settings'] as const;
 
 // Inline text links are the documented exception; everything else must be
 // at least 44x44 on a coarse pointer.

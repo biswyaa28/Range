@@ -3,6 +3,7 @@ import { todayISO } from '@/domain/dates';
 import type { AppState } from '@/domain/types';
 import { fileSaver } from '@/platform';
 import { store } from './store';
+import { integrationStore } from './integrationStore';
 
 export const BACKUP_MIME_TYPE = 'application/json';
 
@@ -19,7 +20,15 @@ export async function exportBackup(
   source: BackupExportSource = store,
   today: string = todayISO(),
 ): Promise<string> {
-  const json = JSON.stringify(source.exportAll(), null, 2);
+  const state: AppState & { integrations?: unknown } = source.exportAll();
+  const integrationState = integrationStore.get();
+  if (
+    integrationState.settings.includeInBackup &&
+    (integrationState.settings.gmail || integrationState.settings.classroom)
+  ) {
+    state.integrations = integrationStore.exportSnapshot();
+  }
+  const json = JSON.stringify(state, null, 2);
   const filename = exportFilename(today);
   await fileSaver.saveFile(new Blob([json], { type: BACKUP_MIME_TYPE }), filename);
   return filename;

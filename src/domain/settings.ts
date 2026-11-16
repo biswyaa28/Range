@@ -217,6 +217,7 @@ export const DEFAULT_HOME_WIDGET_ORDER: readonly string[] = [
   'focus',
   'tasks',
   'upnext',
+  'inbox',
   'deadlines',
   'streak',
   'quick',
