@@ -6,7 +6,6 @@ import {
   liveArray,
   settingsStore,
   store,
-  useAiKey,
   useSettings,
   useStore,
 } from '@/store';
@@ -15,6 +14,7 @@ import type { NotificationPermissionState } from '@/platform';
 import { notifications, platformName } from '@/platform';
 import { checkForUpdates, type UpdateProgress } from '@/platform/updater';
 import { copyDiagnostics } from '@/lib/crashReport';
+import { AiKeyField } from './AiKeyField';
 import {
   notificationPermission,
   requestNotificationPermission,
@@ -191,86 +191,6 @@ function syncStatusText(state: SyncState): string {
 
 const matches = (text: string, query: string): boolean =>
   text.toLowerCase().includes(query);
-
-const AiKeyField: React.FC = () => {
-  const { loaded, hasKey, error, setKey, clear } = useAiKey();
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-
-  const save = async (): Promise<void> => {
-    if (!draft.trim() || saving || !loaded) return;
-    setSaving(true);
-    setNote(null);
-    await setKey(draft);
-    setSaving(false);
-    setDraft('');
-    setNote('Key saved in secure storage on this device.');
-  };
-
-  const remove = async (): Promise<void> => {
-    if (saving) return;
-    setSaving(true);
-    setNote(null);
-    await clear();
-    setSaving(false);
-    setNote('Key removed from this device.');
-  };
-
-  return (
-    <div className="ai-key-field">
-      <div className="ai-key-row">
-        <input
-          className="settings-input"
-          type="password"
-          aria-label="AI API key"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={
-            hasKey ? 'Key saved — paste a new one to replace' : 'Paste your API key'
-          }
-          maxLength={512}
-          value={draft}
-          disabled={saving || !loaded}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setNote(null);
-          }}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          data-action="save-ai-key"
-          onClick={() => void save()}
-          disabled={!draft.trim() || saving || !loaded}
-        >
-          Save
-        </Button>
-        {hasKey ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            data-action="clear-ai-key"
-            onClick={() => void remove()}
-            disabled={saving}
-          >
-            Remove
-          </Button>
-        ) : null}
-      </div>
-      <p
-        className="ai-key-status"
-        data-ai-key-status={error ? 'error' : hasKey ? 'saved' : 'empty'}
-      >
-        {error
-          ? error
-          : hasKey
-            ? 'Saved securely on this device. The key is never synced.'
-            : (note ?? 'Stored in secure storage, never in settings or the cloud.')}
-      </p>
-    </div>
-  );
-};
 
 const SettingRow: React.FC<{ item: SettingItem }> = ({ item }) => {
   const rowClass = [

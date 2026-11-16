@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AI_KEY_STORAGE_KEY, AiKeyStore } from '@/store/aiKeyStore';
 import type { SecureStorageAdapter } from '@/platform/types';
+import { isVaultValue, openSecret, sealSecret, type VaultCrypto } from '@/store/keyVault';
 
 class MemorySecureStorage implements SecureStorageAdapter {
   readonly values = new Map<string, string>();
@@ -30,7 +31,13 @@ describe('AiKeyStore', () => {
 
     await store.load();
 
-    expect(store.get()).toEqual({ key: 'AIza-existing', loaded: true, error: null });
+    expect(store.get()).toMatchObject({
+      key: 'AIza-existing',
+      loaded: true,
+      error: null,
+      locked: false,
+      passphrase: false,
+    });
     expect(store.hasKey()).toBe(true);
   });
 
@@ -73,6 +80,66 @@ describe('AiKeyStore', () => {
 
     expect(store.getKey()).toBe('AIza-current');
     expect(legacyKey).not.toHaveBeenCalled();
+  });
+
+  it('wraps the key with PBKDF2 and AES-GCM when a passphrase is enabled', async () => {
+    const storage = new MemorySecureStorage();
+    const calls: unknown[] = [];
+    const key = {} as CryptoKey;
+    const subtle = {
+      importKey: async () => key,
+      deriveKey: async (algorithm: unknown) => {
+        calls.push(algorithm);
+        return key;
+      },
+      encrypt: async (_algorithm: unknown, _key: unknown, data: Uint8Array) =>
+        data.slice().buffer,
+      decrypt: async (_algorithm: unknown, _key: unknown, data: Uint8Array) =>
+        data.slice().buffer,
+    } as unknown as SubtleCrypto;
+    const keyCrypto: VaultCrypto = {
+      subtle,
+      random: (bytes) => new Uint8Array(bytes).fill(7),
+    };
+    const store = new AiKeyStore({ secureStorage: storage, keyCrypto });
+
+    await store.setKey('AIza-passphrase-key');
+    expect(await store.enablePassphrase('correct horse')).toBe(true);
+    const sealed = storage.values.get(AI_KEY_STORAGE_KEY) ?? '';
+    expect(isVaultValue(sealed)).toBe(true);
+    expect(sealed).not.toContain('correct horse');
+    expect(calls[0]).toMatchObject({
+      name: 'PBKDF2',
+      iterations: 310_000,
+      hash: 'SHA-256',
+    });
+
+    const reloaded = new AiKeyStore({ secureStorage: storage, keyCrypto });
+    await reloaded.load();
+    expect(reloaded.get()).toMatchObject({ locked: true, passphrase: true, key: '' });
+    expect(await reloaded.unlock('correct horse')).toBe(true);
+    expect(reloaded.getKey()).toBe('AIza-passphrase-key');
+    expect(reloaded.get()).toMatchObject({ locked: false, passphrase: true });
+  });
+
+  it('seals and opens a secret with the injectable WebCrypto port', async () => {
+    const key = {} as CryptoKey;
+    const subtle = {
+      importKey: async () => key,
+      deriveKey: async () => key,
+      encrypt: async (_algorithm: unknown, _key: unknown, data: Uint8Array) =>
+        data.slice().buffer,
+      decrypt: async (_algorithm: unknown, _key: unknown, data: Uint8Array) =>
+        data.slice().buffer,
+    } as unknown as SubtleCrypto;
+    const keyCrypto: VaultCrypto = {
+      subtle,
+      random: (bytes) => new Uint8Array(bytes).fill(3),
+    };
+
+    const sealed = await sealSecret('secret-value', 'passphrase', keyCrypto);
+    expect(isVaultValue(sealed)).toBe(true);
+    expect(await openSecret(sealed, 'passphrase', keyCrypto)).toBe('secret-value');
   });
 
   it('reports unavailable storage and keeps a session-only key on write failure', async () => {

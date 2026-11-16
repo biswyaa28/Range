@@ -5,6 +5,10 @@ export interface UseAiKeyResult extends AiKeyState {
   hasKey: boolean;
   setKey: (value: string) => Promise<void>;
   clear: () => Promise<void>;
+  unlock: (passphrase: string) => Promise<boolean>;
+  enablePassphrase: (passphrase: string) => Promise<boolean>;
+  disablePassphrase: () => Promise<boolean>;
+  forgetPassphrase: () => Promise<void>;
 }
 
 export function useAiKey(store: AiKeyStore = aiKeyStore): UseAiKeyResult {
@@ -19,5 +23,9 @@ export function useAiKey(store: AiKeyStore = aiKeyStore): UseAiKeyResult {
     hasKey: state.key.length > 0,
     setKey: store.setKey,
     clear: store.clear,
+    unlock: store.unlock,
+    enablePassphrase: store.enablePassphrase,
+    disablePassphrase: store.disablePassphrase,
+    forgetPassphrase: store.forgetPassphrase,
   };
 }
