@@ -1,0 +1,47 @@
+.classroom-panel {
+  margin-bottom: 18px;
+}
+
+.classroom-items {
+  display: grid;
+  gap: 8px;
+}
+
+.classroom-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.classroom-item:last-child {
+  border-bottom: none;
+}
+
+.classroom-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.classroom-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+}
+
+.classroom-item .ibtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.classroom-submit-note {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.classroom-panel.compact .classroom-item {
+  padding: 7px 0;
+}

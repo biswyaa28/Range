@@ -3,6 +3,7 @@ import { Segmented } from '@/ui/Segmented';
 import { DeadlinesView } from '@/features/deadlines/DeadlinesView';
 import { CalendarView } from './CalendarView';
 import { HabitStrip } from '@/features/habits/HabitStrip';
+import { ClassroomItems } from '@/features/inbox/ClassroomItems';
 
 type PlanTab = 'calendar' | 'deadlines';
 
@@ -47,7 +48,14 @@ export const PlanView: React.FC = () => {
         />
       </div>
 
-      {subTab === 'deadlines' ? <DeadlinesView /> : <CalendarView />}
+      {subTab === 'deadlines' ? (
+        <DeadlinesView />
+      ) : (
+        <>
+          <ClassroomItems compact />
+          <CalendarView />
+        </>
+      )}
     </div>
   );
 };

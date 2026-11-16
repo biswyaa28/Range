@@ -8,6 +8,7 @@ import { Icon } from '@/ui/Icon';
 import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
+import { ClassroomItems } from '@/features/inbox/ClassroomItems';
 import { approveDeadline, dismissDeadline, selectDeadlines } from './deadlinesActions';
 import './DeadlinesView.css';
 
@@ -323,6 +324,8 @@ export const DeadlinesView: React.FC = () => {
           <p className="hint">Inbox is empty for now. Load demo data in Settings to see pending items here.</p>
         )}
       </div>
+
+      <ClassroomItems />
 
       {/* Main List Panel */}
       <div className="panel">
