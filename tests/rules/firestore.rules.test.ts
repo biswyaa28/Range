@@ -329,12 +329,75 @@ describe('firestore.rules', () => {
     });
   });
 
+  describe('habits', () => {
+    const habit = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+      ...record({ id: 'habit-1' }),
+      title: 'Read 20 pages',
+      schedule: 'daily',
+      checkins: ['2026-04-13'],
+      reminder: null,
+      ...overrides,
+    });
+
+    it('allows a daily habit with a reminder', async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ reminder: '20:30' }),
+        ),
+      );
+    });
+
+    it('allows a weekdays habit and a tombstone', async () => {
+      await assertSucceeds(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ schedule: 'weekdays', deleted: true }),
+        ),
+      );
+    });
+
+    it('refuses an unknown schedule', async () => {
+      await assertFails(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ schedule: 'monthly' }),
+        ),
+      );
+    });
+
+    it('refuses check-ins that are not a list', async () => {
+      await assertFails(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ checkins: '2026-04-13' }),
+        ),
+      );
+    });
+
+    it('refuses a malformed reminder or an empty title', async () => {
+      await assertFails(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ reminder: '8pm' }),
+        ),
+      );
+      await assertFails(
+        setDoc(
+          doc(clientFor(UID), 'users', UID, 'habits', 'habit-1'),
+          habit({ title: '' }),
+        ),
+      );
+    });
+  });
+
   describe('collections', () => {
     it('allows reads of the record collections', async () => {
       await assertSucceeds(getDocs(collection(clientFor(UID), 'users', UID, 'blocks')));
       await assertSucceeds(getDocs(collection(clientFor(UID), 'users', UID, 'tasks')));
       await assertSucceeds(getDocs(collection(clientFor(UID), 'users', UID, 'notes')));
       await assertSucceeds(getDocs(collection(clientFor(UID), 'users', UID, 'deadlines')));
+      await assertSucceeds(getDocs(collection(clientFor(UID), 'users', UID, 'habits')));
     });
 
     it('refuses reads of a collection outside the allowlist', async () => {

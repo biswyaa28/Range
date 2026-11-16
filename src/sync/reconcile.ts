@@ -2,13 +2,14 @@ import type { BaseRecord } from '@/domain/types';
 import type { PushLedger } from '@/store/syncState';
 import { pushLedgerKey } from '@/store/syncState';
 
-export type ReconcileCollection = 'blocks' | 'tasks' | 'notes' | 'deadlines';
+export type ReconcileCollection = 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits';
 
 export const RECONCILE_COLLECTIONS: readonly ReconcileCollection[] = [
   'blocks',
   'tasks',
   'notes',
   'deadlines',
+  'habits',
 ];
 
 export interface ReconcileInput {

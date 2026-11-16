@@ -72,6 +72,7 @@ class RecordingAdapter implements SyncAdapter {
       tasks: [],
       notes: [],
       deadlines: [],
+      habits: [],
       profile: null,
       layout: null,
       appSettings: null,

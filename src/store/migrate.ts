@@ -29,6 +29,7 @@ export function hydrateState(raw: unknown): AppState {
     tasks: arr('tasks'),
     notes: arr('notes'),
     deadlines: arr('deadlines'),
+    habits: arr('habits'),
     dayStats:
       s['dayStats'] && typeof s['dayStats'] === 'object' && !Array.isArray(s['dayStats'])
         ? (s['dayStats'] as AppState['dayStats'])
@@ -151,6 +152,22 @@ export function migrateSave(
   d.deadlines = (Array.isArray(d.deadlines) ? d.deadlines : [])
     .filter(isPlainObject)
     .map((r) => normalizeRecord(r, dev, idGen) as unknown as AppState['deadlines'][number]);
+
+  d.habits = (Array.isArray(d.habits) ? d.habits : [])
+    .filter(isPlainObject)
+    .map((r) => {
+      const habit = normalizeRecord(r, dev, idGen);
+      const raw = habit as unknown as Record<string, unknown>;
+      raw['schedule'] = raw['schedule'] === 'weekdays' ? 'weekdays' : 'daily';
+      raw['checkins'] = Array.isArray(raw['checkins'])
+        ? [...new Set(raw['checkins'].filter((iso): iso is string => typeof iso === 'string'))].sort()
+        : [];
+      raw['reminder'] =
+        typeof raw['reminder'] === 'string' && /^\d{2}:\d{2}$/.test(raw['reminder'])
+          ? raw['reminder']
+          : null;
+      return habit as unknown as AppState['habits'][number];
+    });
 
   for (const iso of Object.keys(d.dayStats)) {
     const s = d.dayStats[iso];

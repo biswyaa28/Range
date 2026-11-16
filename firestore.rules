@@ -10,7 +10,8 @@ service cloud.firestore {
     }
 
     function isRecordCollection(name) {
-      return name == 'blocks' || name == 'tasks' || name == 'notes' || name == 'deadlines';
+      return name == 'blocks' || name == 'tasks' || name == 'notes' || name == 'deadlines'
+        || name == 'habits';
     }
 
     // Records are plain JSON written with the record id as the document id.
@@ -33,6 +34,15 @@ service cloud.firestore {
         && (!('deviceId' in d) || d.deviceId is string)
         && (!('createdAt' in d) || d.createdAt is string)
         && (!('expireAt' in d) || d.expireAt is timestamp);
+    }
+
+    function habitShape() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['title', 'schedule', 'checkins'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 90
+        && d.schedule in ['daily', 'weekdays']
+        && d.checkins is list && d.checkins.size() <= 4000
+        && (!('reminder' in d) || d.reminder == null || (d.reminder is string && d.reminder.matches('^[0-2][0-9]:[0-5][0-9]$')));
     }
 
     // `state/app` holds the singletons, `state/stats` the day map (split out so
@@ -68,7 +78,8 @@ service cloud.firestore {
         allow read: if signedInAs(uid) && isRecordCollection(collection);
         allow create, update: if signedInAs(uid)
           && isRecordCollection(collection)
-          && recordShape(docId);
+          && recordShape(docId)
+          && (collection != 'habits' || habitShape());
         allow delete: if signedInAs(uid) && isRecordCollection(collection);
       }
     }

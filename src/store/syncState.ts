@@ -15,7 +15,7 @@ export const SYNC_READS_KEY = 'personalOS_sync_reads_v1';
 export interface PullCheckpoint {
   schema: number;
   accountUid: string;
-  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits';
   updatedAt: string;
   id: string;
 }

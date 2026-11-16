@@ -142,9 +142,9 @@ describe('records the remote dropped', () => {
 
   function input(patch: Partial<Parameters<typeof planMissingRemoteTombstones>[0]> = {}) {
     return {
-      local: { blocks: [], tasks: [task('task-1')], notes: [], deadlines: [] },
-      remoteIds: { blocks: new Set<string>(), tasks: new Set<string>(), notes: new Set<string>(), deadlines: new Set<string>() },
-      pendingIds: { blocks: new Set<string>(), tasks: new Set<string>(), notes: new Set<string>(), deadlines: new Set<string>() },
+      local: { blocks: [], tasks: [task('task-1')], notes: [], deadlines: [], habits: [] },
+      remoteIds: { blocks: new Set<string>(), tasks: new Set<string>(), notes: new Set<string>(), deadlines: new Set<string>(), habits: new Set<string>() },
+      pendingIds: { blocks: new Set<string>(), tasks: new Set<string>(), notes: new Set<string>(), deadlines: new Set<string>(), habits: new Set<string>() },
       ledger,
       ...patch,
     };
@@ -164,6 +164,7 @@ describe('records the remote dropped', () => {
           tasks: new Set(['task-1']),
           notes: new Set<string>(),
           deadlines: new Set<string>(),
+          habits: new Set<string>(),
         },
       }),
     );
@@ -179,6 +180,7 @@ describe('records the remote dropped', () => {
           tasks: new Set(['task-1']),
           notes: new Set<string>(),
           deadlines: new Set<string>(),
+          habits: new Set<string>(),
         },
       }),
     );
@@ -207,7 +209,7 @@ describe('records the remote dropped', () => {
         [pushLedgerKey('tasks', 'deleted-long-ago')]: NOW,
         [pushLedgerKey('notes', 'note-1')]: NOW,
       },
-      { blocks: [], tasks: [task('task-1')], notes: [], deadlines: [] },
+      { blocks: [], tasks: [task('task-1')], notes: [], deadlines: [], habits: [] },
     );
 
     expect(pruned).toEqual({ [pushLedgerKey('tasks', 'task-1')]: NOW });
@@ -222,6 +224,7 @@ class EmptyAdapter implements SyncAdapter {
     tasks: [],
     notes: [],
     deadlines: [],
+    habits: [],
     profile: null,
     layout: null,
     appSettings: null,
@@ -303,7 +306,7 @@ describe('a pull after more than the tombstone retention span', () => {
     adapter.emit(ACCOUNT);
     await engine.syncNow();
 
-    expect(adapter.pullOptions[0]).toEqual({ since: null });
+    expect(adapter.pullOptions[0]).toMatchObject({ since: null, resume: undefined });
     expect(store.get().tasks[0]?.deleted).toBe(true);
     engine.dispose();
   });

@@ -49,7 +49,7 @@ describe('validateBackupText', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe(
-        'Not a Personal OS backup — expected blocks, tasks, notes or deadlines.',
+        'Not a Personal OS backup — expected blocks, tasks, notes, deadlines or habits.',
       );
     }
   });

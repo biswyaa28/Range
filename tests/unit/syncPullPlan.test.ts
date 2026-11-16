@@ -131,6 +131,7 @@ class RecordingAdapter implements SyncAdapter {
       tasks: [],
       notes: [],
       deadlines: [],
+      habits: [],
       profile: null,
       layout: null,
       appSettings: null,
@@ -177,7 +178,7 @@ describe('the pull cursor', () => {
     adapter.emit(ACCOUNT);
     await engine.syncNow();
 
-    expect(adapter.pullOptions[0]).toEqual({ since: null });
+    expect(adapter.pullOptions[0]).toMatchObject({ since: null, resume: undefined });
 
     clock.advanceMs(60_000);
     await engine.syncNow();
@@ -201,7 +202,7 @@ describe('the pull cursor', () => {
     clock.advanceMs(FULL_PULL_INTERVAL_MS);
     await engine.syncNow();
 
-    expect(adapter.pullOptions.at(-1)).toEqual({ since: null });
+    expect(adapter.pullOptions.at(-1)).toMatchObject({ since: null, resume: undefined });
     engine.dispose();
   });
 
@@ -213,7 +214,7 @@ describe('the pull cursor', () => {
     adapter.emit(ACCOUNT);
     await engine.syncNow();
 
-    expect(adapter.pullOptions[0]).toEqual({ since: null });
+    expect(adapter.pullOptions[0]).toMatchObject({ since: null, resume: undefined });
     engine.dispose();
   });
 });

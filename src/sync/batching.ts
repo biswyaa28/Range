@@ -2,7 +2,7 @@ import { RECORD_MAX_BYTES } from '@/domain/limits';
 import type { BaseRecord } from '@/domain/types';
 import type { SyncPush, UnsyncableRecord } from './types';
 
-export type CollectionName = 'blocks' | 'tasks' | 'notes' | 'deadlines';
+export type CollectionName = 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits';
 
 /**
  * Firestore accepts 500 writes per batch. The app uses 400 so a batch keeps
@@ -11,7 +11,7 @@ export type CollectionName = 'blocks' | 'tasks' | 'notes' | 'deadlines';
  */
 export const MAX_BATCH_OPS = 400;
 
-const COLLECTIONS: readonly CollectionName[] = ['blocks', 'tasks', 'notes', 'deadlines'];
+const COLLECTIONS: readonly CollectionName[] = ['blocks', 'tasks', 'notes', 'deadlines', 'habits'];
 
 export interface PushBatch extends SyncPush {
   /** Records carried by this batch, keyed by collection. */
@@ -24,6 +24,7 @@ function emptyPush(): SyncPush {
     tasks: [],
     notes: [],
     deadlines: [],
+    habits: [],
     profile: null,
     layout: null,
     appSettings: null,
@@ -48,7 +49,8 @@ export function countPushOps(payload: SyncPush): number {
     payload.blocks.length +
     payload.tasks.length +
     payload.notes.length +
-    payload.deadlines.length;
+    payload.deadlines.length +
+    payload.habits.length;
   if (writesStateApp(payload)) ops += 1;
   if (writesDayStats(payload)) ops += 1;
   if (payload.preferences) ops += 1;
@@ -63,6 +65,7 @@ function toBatch(payload: SyncPush): PushBatch {
       tasks: payload.tasks,
       notes: payload.notes,
       deadlines: payload.deadlines,
+      habits: payload.habits,
     },
   };
 }
@@ -167,6 +170,7 @@ export function splitPushBySize(
       tasks: keep('tasks', payload.tasks),
       notes: keep('notes', payload.notes),
       deadlines: keep('deadlines', payload.deadlines),
+      habits: keep('habits', payload.habits),
     },
     skipped,
   };

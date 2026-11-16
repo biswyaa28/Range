@@ -35,6 +35,7 @@ import { buildHomeData } from './homeData';
 import { HomeProvider, type HomeActions } from './HomeContext';
 import { SmartGreeting } from './SmartGreeting';
 import { SearchBar } from './SearchBar';
+import { HabitStrip } from '@/features/habits/HabitStrip';
 import { HOME_CARD_SPECS, homeCard } from './cards/registry';
 import './HomeView.css';
 
@@ -858,6 +859,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           <SmartGreeting />
           <h2 className="sr-only">Home overview</h2>
           <SearchBar editing={editing} onToggleEdit={toggleEdit} />
+          <HabitStrip compact />
 
           {editing && (
             <>

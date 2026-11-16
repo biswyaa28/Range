@@ -54,6 +54,7 @@ interface LocalChanges {
   tasks: Map<string, string>;
   notes: Map<string, string>;
   deadlines: Map<string, string>;
+  habits: Map<string, string>;
   profile: string | null;
   layout: string | null;
   appSettings: string | null;
@@ -73,7 +74,7 @@ function committedRecords(chunk: SyncPush): Array<{
   updatedAt: string;
 }> {
   const out: Array<{ collection: CollectionName; id: string; updatedAt: string }> = [];
-  const collections: CollectionName[] = ['blocks', 'tasks', 'notes', 'deadlines'];
+  const collections: CollectionName[] = ['blocks', 'tasks', 'notes', 'deadlines', 'habits'];
   for (const collection of collections) {
     for (const record of chunk[collection]) {
       out.push({ collection, id: record.id, updatedAt: String(record.updatedAt) });
@@ -391,6 +392,7 @@ export class SyncEngine {
                 tasks: state.tasks,
                 notes: state.notes,
                 deadlines: state.deadlines,
+                habits: state.habits,
               }),
             );
           }
@@ -460,12 +462,14 @@ export class SyncEngine {
       tasks: idsOf(snapshot.tasks),
       notes: idsOf(snapshot.notes),
       deadlines: idsOf(snapshot.deadlines),
+      habits: idsOf(snapshot.habits),
     };
     const pendingIds = {
       blocks: new Set(local.blocks.keys()),
       tasks: new Set(local.tasks.keys()),
       notes: new Set(local.notes.keys()),
       deadlines: new Set(local.deadlines.keys()),
+      habits: new Set(local.habits.keys()),
     };
 
     const result = planMissingRemoteTombstones({
@@ -474,6 +478,7 @@ export class SyncEngine {
         tasks: state.tasks,
         notes: state.notes,
         deadlines: state.deadlines,
+        habits: state.habits,
       },
       remoteIds,
       pendingIds,
@@ -571,6 +576,7 @@ export class SyncEngine {
       tasks: payload.tasks.filter((record) => !isPushed('tasks', record)),
       notes: payload.notes.filter((record) => !isPushed('notes', record)),
       deadlines: payload.deadlines.filter((record) => !isPushed('deadlines', record)),
+      habits: payload.habits.filter((record) => !isPushed('habits', record)),
     };
   }
 
@@ -584,6 +590,7 @@ export class SyncEngine {
         tasks: snapshot.tasks,
         notes: snapshot.notes,
         deadlines: snapshot.deadlines,
+        habits: snapshot.habits,
         profile: snapshot.profile ?? undefined,
         layout: snapshot.layout ?? undefined,
         settings: snapshot.appSettings ?? undefined,
@@ -611,6 +618,7 @@ export class SyncEngine {
         tasks: pick(state.tasks, local.tasks),
         notes: pick(state.notes, local.notes),
         deadlines: pick(state.deadlines, local.deadlines),
+        habits: pick(state.habits, local.habits),
         profile:
           local.profile !== null && String(state.profile.updatedAt) === local.profile
             ? state.profile
@@ -675,6 +683,7 @@ export class SyncEngine {
       tasks: fingerprints(pending.tasks),
       notes: fingerprints(pending.notes),
       deadlines: fingerprints(pending.deadlines),
+      habits: fingerprints(pending.habits),
       profile: pending.profile ? String(pending.profile.updatedAt) : null,
       layout: pending.layout ? String(pending.layout.updatedAt) : null,
       appSettings: pending.settings ? String(pending.settings.updatedAt) : null,
@@ -811,6 +820,7 @@ export class SyncEngine {
       pending.tasks.length > 0 ||
       pending.notes.length > 0 ||
       pending.deadlines.length > 0 ||
+      pending.habits.length > 0 ||
       pending.profile !== null ||
       pending.layout !== null ||
       pending.settings !== null ||

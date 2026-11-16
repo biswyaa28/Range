@@ -1,9 +1,10 @@
 import { addDays, hmToMin, toISO } from './dates';
 import { blocksForDate } from './recurrence';
-import type { Block, Deadline, Task } from './types';
+import { habitDone, habitIsScheduled } from './habits';
+import type { Block, Deadline, Habit, Task } from './types';
 import type { NotificationSettings } from './settings';
 
-export type NotificationKind = 'focus' | 'deadline' | 'task' | 'digest';
+export type NotificationKind = 'focus' | 'deadline' | 'task' | 'digest' | 'habit';
 
 export interface PlannedNotification {
   id: number;
@@ -18,6 +19,7 @@ export interface NotificationPlanInput {
   blocks: Block[];
   deadlines: Deadline[];
   tasks: Task[];
+  habits?: Habit[];
   settings: NotificationSettings;
   now?: Date;
 }
@@ -63,6 +65,7 @@ export function planNotifications({
   blocks,
   deadlines,
   tasks,
+  habits = [],
   settings,
   now = new Date(),
 }: NotificationPlanInput): PlannedNotification[] {
@@ -104,6 +107,21 @@ export function planNotifications({
           });
         }
       }
+    }
+
+    for (const habit of habits) {
+      if (habit.deleted || !habit.reminder || !habitIsScheduled(habit, iso)) continue;
+      if (habitDone(habit, iso)) continue;
+      const at = atMinutes(iso, hmToMin(habit.reminder));
+      if (at.getTime() <= now.getTime()) continue;
+      if (withinQuietHours(at, settings.quietHours)) continue;
+      out.push({
+        id: notificationId('habit', `${habit.id}:${iso}`),
+        at: at.toISOString(),
+        title: 'Habit reminder',
+        body: habit.title,
+        kind: 'habit',
+      });
     }
 
     if (settings.tasks) {

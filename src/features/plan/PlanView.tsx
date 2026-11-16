@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Segmented } from '@/ui/Segmented';
 import { DeadlinesView } from '@/features/deadlines/DeadlinesView';
 import { CalendarView } from './CalendarView';
+import { HabitStrip } from '@/features/habits/HabitStrip';
 
 type PlanTab = 'calendar' | 'deadlines';
 
@@ -33,6 +34,7 @@ export const PlanView: React.FC = () => {
 
   return (
     <div className="view-content">
+      <HabitStrip compact />
       <div style={{ marginBottom: '14px' }}>
         <Segmented<PlanTab>
           value={subTab}

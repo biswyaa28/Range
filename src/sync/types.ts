@@ -19,6 +19,7 @@ export interface RemoteSnapshot {
   tasks: unknown[];
   notes: unknown[];
   deadlines: unknown[];
+  habits: unknown[];
   profile: unknown | null;
   layout: unknown | null;
   /** Legacy `AppState.settings` group. */
@@ -36,6 +37,7 @@ export interface SyncPush {
   tasks: AppState['tasks'];
   notes: AppState['notes'];
   deadlines: AppState['deadlines'];
+  habits: AppState['habits'];
   profile: AppState['profile'] | null;
   layout: AppState['layout'] | null;
   appSettings: AppState['settings'] | null;
@@ -50,10 +52,10 @@ export interface SyncPullOptions {
    */
   since?: string | null;
   /** Resume a collection after an interrupted paged pull. */
-  resume?: Partial<Record<'blocks' | 'tasks' | 'notes' | 'deadlines', PullCursor>>;
+  resume?: Partial<Record<'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits', PullCursor>>;
   /** Fires after each 300-document page. */
   onPage?: (progress: {
-    collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+    collection: 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits';
     read: number;
     page: number;
     cursor: PullCursor | null;
@@ -74,7 +76,7 @@ export interface SyncDeleteOptions {
 
 /** A record too large to push; sync skips it instead of failing the batch. */
 export interface UnsyncableRecord {
-  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines';
+  collection: 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits';
   id: string;
   title: string;
   bytes: number;

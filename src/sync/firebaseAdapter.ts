@@ -25,7 +25,7 @@ const APP_NAME = 'personal-os-sync';
 /** Firestore caps a batch at 500 writes; 400 keeps headroom. */
 const DELETE_BATCH_OPS = 400;
 
-const RECORD_COLLECTIONS = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
+const RECORD_COLLECTIONS = ['blocks', 'tasks', 'notes', 'deadlines', 'habits'] as const;
 /** Pages are small enough for slow connections and count against reads once. */
 export const PULL_PAGE_SIZE = 300;
 const STATE_DOCS = ['app', 'stats', 'preferences'] as const;
@@ -226,8 +226,9 @@ export class FirebaseAdapter implements SyncAdapter {
     const tasks = collections.tasks ?? [];
     const notes = collections.notes ?? [];
     const deadlines = collections.deadlines ?? [];
+    const habits = collections.habits ?? [];
     const documentsRead =
-      blocks.length + tasks.length + notes.length + deadlines.length + 3;
+      blocks.length + tasks.length + notes.length + deadlines.length + habits.length + 3;
 
     const app = appSnap.exists() ? appSnap.data() : null;
     const stats = statsSnap.exists() ? asDayStats(statsSnap.data()) : null;
@@ -237,6 +238,7 @@ export class FirebaseAdapter implements SyncAdapter {
       tasks,
       notes,
       deadlines,
+      habits,
       documentsRead,
       profile: asRecord(app?.['profile']),
       layout: asRecord(app?.['layout']),
@@ -266,6 +268,7 @@ export class FirebaseAdapter implements SyncAdapter {
         ['tasks', chunk.tasks],
         ['notes', chunk.notes],
         ['deadlines', chunk.deadlines],
+        ['habits', chunk.habits],
       ];
 
       for (const [name, list] of collections) {

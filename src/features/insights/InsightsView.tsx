@@ -3,7 +3,8 @@ import type { AppRoute } from '@/hooks';
 import { useSettings, useStore } from '@/store';
 import type { InsightChartItem, InsightRange } from '@/domain/insights';
 import { buildBarChart, buildInsightSummary } from '@/domain/insights';
-import { todayISO } from '@/domain/dates';
+import { todayISO, weekDayLabels } from '@/domain/dates';
+import { habitWeek } from '@/domain/habits';
 import { health, platformName } from '@/platform';
 import type { HealthDataSummary } from '@/platform';
 import { Card } from '@/ui/Card';
@@ -13,6 +14,7 @@ import { Icon } from '@/ui/Icon';
 import { Segmented } from '@/ui/Segmented';
 import { Sparkline } from '@/ui/Sparkline';
 import './InsightsView.css';
+import './HabitHeat.css';
 
 const SAMPLE_STEPS = [4.2, 6.1, 5.3, 7.8, 6.9, 8.4, 7.2];
 const SAMPLE_SLEEP = [6.5, 7.1, 6.8, 7.4, 6.2, 7.6, 7.0];
@@ -332,6 +334,38 @@ export const InsightsView: React.FC<InsightsViewProps> = ({ onNavigate }) => {
           {summary.activeDays} active day{summary.activeDays === 1 ? '' : 's'} in this range
         </span>
       </div>
+
+      {state.habits.some((habit) => !habit.deleted) && (
+        <Card className="insights-habits">
+          <div className="insights-chart-head">
+            <h2>Habit consistency</h2>
+            <span className="chip">This week</span>
+          </div>
+          <div className="habit-heat" aria-label="Habit check-ins this week">
+            <div className="habit-heat-head" aria-hidden="true">
+              <span />
+              {weekDayLabels(settings.weekStart).map((label) => (
+                <span key={label}>{label.slice(0, 1)}</span>
+              ))}
+            </div>
+            {state.habits
+              .filter((habit) => !habit.deleted)
+              .map((habit) => (
+                <div className="habit-heat-row" key={habit.id}>
+                  <span className="habit-heat-name">{habit.title}</span>
+                  {habitWeek(habit, todayISO(), settings.weekStart).map((cell) => (
+                    <span
+                      key={cell.iso}
+                      className={`habit-heat-cell${cell.done ? ' done' : ''}${cell.scheduled ? '' : ' rest'}`}
+                      title={`${cell.iso}: ${cell.done ? 'done' : cell.scheduled ? 'not done' : 'rest day'}`}
+                      aria-label={`${cell.iso}: ${cell.done ? 'done' : cell.scheduled ? 'not done' : 'rest day'}`}
+                    />
+                  ))}
+                </div>
+              ))}
+          </div>
+        </Card>
+      )}
 
       <div className="stats-cards">
         <article className="stat-card" data-stat="completion">

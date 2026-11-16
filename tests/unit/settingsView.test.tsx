@@ -251,7 +251,7 @@ describe('SettingsView', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          'Not a Personal OS backup — expected blocks, tasks, notes or deadlines.',
+          'Not a Personal OS backup — expected blocks, tasks, notes, deadlines or habits.',
         ),
       ).not.toBeNull();
     });

@@ -63,6 +63,17 @@ export interface Deadline extends BaseRecord {
   source: DeadlineSource | string;
 }
 
+export type HabitSchedule = 'daily' | 'weekdays';
+
+export interface Habit extends BaseRecord {
+  title: string;
+  schedule: HabitSchedule;
+  /** ISO dates checked off, kept sorted and unique. */
+  checkins: string[];
+  /** Optional HH:MM local reminder; null disables it. */
+  reminder: string | null;
+}
+
 export interface DayStats {
   date: string; // ISO date string
   blocksDone: number;
@@ -143,6 +154,7 @@ export interface AppState {
   tasks: Task[];
   notes: Note[];
   deadlines: Deadline[];
+  habits: Habit[];
   dayStats: Record<string, DayStats>;
   profile: Profile;
   layout: Layout;
@@ -159,6 +171,7 @@ export function defaultState(): AppState {
     tasks: [],
     notes: [],
     deadlines: [],
+    habits: [],
     dayStats: {},
     profile: {
       onboarded: false,

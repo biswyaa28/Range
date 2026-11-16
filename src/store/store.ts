@@ -26,6 +26,7 @@ export interface PendingChangesResult {
   tasks: AppState['tasks'];
   notes: AppState['notes'];
   deadlines: AppState['deadlines'];
+  habits: AppState['habits'];
   profile: AppState['profile'] | null;
   layout: AppState['layout'] | null;
   settings: AppState['settings'] | null;
@@ -176,6 +177,7 @@ export class PersonalStore {
       tasks: [...this.data.tasks],
       notes: [...this.data.notes],
       deadlines: [...this.data.deadlines],
+      habits: [...this.data.habits],
       dayStats: { ...this.data.dayStats },
     };
     this.notify();
@@ -275,7 +277,7 @@ export class PersonalStore {
    * record would otherwise be pushed back and resurrected.
    */
   tombstoneRecords(
-    entries: Array<{ collection: 'blocks' | 'tasks' | 'notes' | 'deadlines'; id: string }>,
+    entries: Array<{ collection: 'blocks' | 'tasks' | 'notes' | 'deadlines' | 'habits'; id: string }>,
   ): number {
     if (entries.length === 0) return 0;
     let removed = 0;
@@ -327,6 +329,7 @@ export class PersonalStore {
       tasks: this.data.tasks.filter(rec),
       notes: this.data.notes.filter(rec),
       deadlines: this.data.deadlines.filter(rec),
+      habits: this.data.habits.filter(rec),
       profile: one(this.data.profile),
       layout: one(this.data.layout),
       settings: one(this.data.settings),

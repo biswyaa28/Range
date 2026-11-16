@@ -7,7 +7,7 @@ export const CLEAR_CONFIRM_PHRASE = 'clear';
 
 export const DELETE_CLOUD_CONFIRM_PHRASE = 'DELETE';
 
-export const BACKUP_LIST_KEYS = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
+export const BACKUP_LIST_KEYS = ['blocks', 'tasks', 'notes', 'deadlines', 'habits'] as const;
 
 export type BackupListKey = (typeof BACKUP_LIST_KEYS)[number];
 
@@ -49,7 +49,7 @@ export function validateBackupText(text: string): BackupValidation {
   if (!hasList) {
     return {
       ok: false,
-      error: 'Not a Personal OS backup — expected blocks, tasks, notes or deadlines.',
+      error: 'Not a Personal OS backup — expected blocks, tasks, notes, deadlines or habits.',
     };
   }
 

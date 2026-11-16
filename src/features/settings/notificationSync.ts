@@ -25,6 +25,7 @@ export async function syncNotifications(): Promise<void> {
       blocks: state.blocks,
       deadlines: state.deadlines,
       tasks: state.tasks,
+      habits: state.habits,
       settings,
     });
     await notifications.schedule(

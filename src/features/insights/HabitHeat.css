@@ -1,0 +1,44 @@
+.habit-heat {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.habit-heat-head,
+.habit-heat-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) repeat(7, 22px);
+  gap: 5px;
+  align-items: center;
+}
+
+.habit-heat-head span {
+  color: var(--text-3);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.habit-heat-name {
+  overflow: hidden;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-heat-cell {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.habit-heat-cell.done {
+  border-color: var(--accent, #d7a900);
+  background: var(--accent, #d7a900);
+}
+
+.habit-heat-cell.rest {
+  opacity: 0.35;
+}

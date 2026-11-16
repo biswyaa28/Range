@@ -122,7 +122,7 @@ export function mergeRemote(
   const safeNowMs = Number.isFinite(nowMs) ? nowMs : Date.now();
 
   const remObj = remote as Record<string, unknown>;
-  const collKeys = ['blocks', 'tasks', 'notes', 'deadlines'] as const;
+  const collKeys = ['blocks', 'tasks', 'notes', 'deadlines', 'habits'] as const;
 
   collKeys.forEach((k) => {
     const list = Array.isArray(remObj[k]) ? (remObj[k] as Record<string, unknown>[]) : [];
