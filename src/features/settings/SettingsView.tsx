@@ -48,6 +48,7 @@ import {
   validateBackupText,
 } from '@/domain/backup';
 import { countOversizedNotes } from '@/domain/limits';
+import { integrationStore } from '@/store/integrationStore';
 import { PRIVACY_POLICY_URL } from '@/config/links';
 import { resolveBentoLayout } from '@/domain/bentoLayout';
 import {
@@ -57,6 +58,7 @@ import {
 } from '@/features/home/cards/registry';
 import { Haptics } from '@/engines/haptics';
 import { useSync } from '@/sync/useSync';
+import { IntegrationsSettings } from './IntegrationsSettings';
 import type { DeleteProgress, SyncState } from '@/sync/types';
 import { Button } from '@/ui/Button';
 import { Icon, type IconName } from '@/ui/Icon';
@@ -778,6 +780,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const confirmImport = (): void => {
     if (!pendingImport) return;
     const oversized = countOversizedNotes(pendingImport);
+    const rawIntegrations = (pendingImport as unknown as Record<string, unknown>)['integrations'];
+    if (rawIntegrations) integrationStore.importSnapshot(rawIntegrations);
     store.importAll(pendingImport);
     setPendingImport(null);
     Haptics.success();
@@ -1432,6 +1436,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               },
             ]
           : []),
+      ],
+    },
+    {
+      id: 'integrations',
+      title: 'Integrations',
+      icon: 'cloud',
+      keywords: 'google gmail classroom inbox read-only scopes oauth reconnect int',
+      items: [
+        {
+          id: 'integrations-google',
+          title: 'Google integrations',
+          description: 'Read-only Gmail and Classroom, cached on this device.',
+          keywords: 'google gmail classroom connect disconnect',
+          block: true,
+          control: <IntegrationsSettings />,
+        },
       ],
     },
     {

@@ -7,6 +7,7 @@ export interface SwitchProps {
   onChange: (checked: boolean) => void;
   id?: string;
   className?: string;
+  disabled?: boolean;
   'aria-label'?: string;
 }
 
@@ -15,9 +16,11 @@ export const Switch: React.FC<SwitchProps> = ({
   onChange,
   id,
   className = '',
+  disabled = false,
   'aria-label': ariaLabel,
 }) => {
   const toggle = () => {
+    if (disabled) return;
     Haptics.tap();
     onChange(!checked);
   };
@@ -36,6 +39,7 @@ export const Switch: React.FC<SwitchProps> = ({
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}
+      disabled={disabled}
       className={`switch ${className}`.trim()}
       onClick={toggle}
       onKeyDown={handleKeyDown}

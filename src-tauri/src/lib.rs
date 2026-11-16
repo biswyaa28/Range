@@ -12,6 +12,25 @@ async fn google_sign_in(app: tauri::AppHandle) -> Result<auth::GoogleTokens, Str
 }
 
 #[tauri::command]
+async fn google_integrations_sign_in(
+  app: tauri::AppHandle,
+  scopes: Vec<String>,
+) -> Result<auth::IntegrationTokens, String> {
+  tauri::async_runtime::spawn_blocking(move || auth::integration_sign_in(&app, &scopes))
+    .await
+    .map_err(|_| "Sign-in failed. Try again.".to_string())?
+}
+
+#[tauri::command]
+async fn google_integrations_refresh(
+  refresh_token: String,
+) -> Result<auth::IntegrationTokens, String> {
+  tauri::async_runtime::spawn_blocking(move || auth::integration_refresh(&refresh_token))
+    .await
+    .map_err(|_| "Google access expired. Reconnect Google.".to_string())?
+}
+
+#[tauri::command]
 fn google_sign_in_cancel() {
   auth::cancel();
 }
@@ -138,6 +157,8 @@ pub fn run() {
       secure_storage_set,
       secure_storage_remove,
       google_sign_in,
+      google_integrations_sign_in,
+      google_integrations_refresh,
       google_sign_in_cancel
     ])
     .run(tauri::generate_context!())
