@@ -36,6 +36,9 @@ const InsightsView = React.lazy(() =>
 const SettingsView = React.lazy(() =>
   import('@/features/settings/SettingsView').then((module) => ({ default: module.SettingsView })),
 );
+const InboxView = React.lazy(() =>
+  import('@/features/inbox/InboxView').then((module) => ({ default: module.InboxView })),
+);
 import { Palette } from '@/features/palette/Palette';
 import { openPalette } from '@/features/palette/paletteBus';
 import { ChatPanel } from '@/features/chat/ChatPanel';
@@ -286,6 +289,8 @@ const AppShell: React.FC = () => {
       case 'insights':
       case 'stats':
         return <InsightsView onNavigate={navigate} />;
+      case 'inbox':
+        return <InboxView onNavigate={navigate} />;
       case 'settings':
         return (
           <SettingsView

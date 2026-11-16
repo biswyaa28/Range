@@ -12,6 +12,7 @@ const ROUTE_TITLES: Record<AppRoute, string> = {
   focus: 'Focus',
   prompter: 'Prompter',
   insights: 'Insights',
+  inbox: 'Inbox',
   stats: 'Insights',
   settings: 'Settings',
 };

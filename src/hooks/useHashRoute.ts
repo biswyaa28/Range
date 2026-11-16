@@ -8,6 +8,7 @@ export type AppRoute =
   | 'notes'
   | 'focus'
   | 'insights'
+  | 'inbox'
   | 'settings'
   | 'today'
   | 'timetable'
@@ -23,6 +24,7 @@ export const PRIMARY_ROUTES: AppRoute[] = [
   'notes',
   'focus',
   'insights',
+  'inbox',
   'settings',
 ];
 

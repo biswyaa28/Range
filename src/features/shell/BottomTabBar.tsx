@@ -19,6 +19,7 @@ const TABS: Array<{ id: AppRoute; label: string; icon: IconName }> = [
 ];
 
 const MORE_ITEMS: Array<{ id: AppRoute; label: string; icon: IconName }> = [
+  { id: 'inbox', label: 'Inbox', icon: 'flag' },
   { id: 'insights', label: 'Insights', icon: 'chart' },
   { id: 'settings', label: 'Settings', icon: 'gear' },
   { id: 'deadlines', label: 'Deadlines', icon: 'flag' },
@@ -36,7 +37,8 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ currentRoute, onNavi
   };
 
   const activeTabId = getTabOfRoute(currentRoute);
-  const moreActive = activeTabId === 'insights' || activeTabId === 'settings';
+  const moreActive =
+    activeTabId === 'insights' || activeTabId === 'inbox' || activeTabId === 'settings';
 
   const go = (route: AppRoute) => {
     Haptics.select();
