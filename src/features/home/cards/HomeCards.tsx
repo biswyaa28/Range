@@ -12,6 +12,7 @@ import { Haptics } from '@/engines/haptics';
 import { useHome } from '../HomeContext';
 import { isInFocusWindow, isInWakingHours } from '../homeData';
 import { usePomodoro } from '@/hooks';
+import { sendIntent } from '@/hooks/useRouteIntent';
 import { openFocusMode } from '@/features/focus/focusModeBus';
 
 interface CardProps {
@@ -126,6 +127,11 @@ export const WeeklyCard: React.FC<CardProps> = () => {
   const { data, actions } = useHome();
   const goalRatio = Math.min(0.92, data.goal / data.weekMax);
 
+  const openCalendarDay = (iso: string) => {
+    actions.navigate('plan');
+    sendIntent('personalos:open-day', iso);
+  };
+
   return (
     <>
       <h3>
@@ -147,6 +153,7 @@ export const WeeklyCard: React.FC<CardProps> = () => {
               data-tip={label}
               title={`${day.label}: ${label}`}
               aria-label={`${day.label}: ${label}`}
+              onClick={() => openCalendarDay(day.iso)}
             >
               <i style={{ height: `calc((100% - 26px) * ${ratio.toFixed(3)})` }} />
               {day.label}
@@ -228,7 +235,7 @@ export const FocusCard: React.FC<CardProps> = ({ size }) => {
   );
 };
 
-const TaskRow: React.FC<{ task: Task }> = ({ task }) => (
+const TaskRow: React.FC<{ task: Task; onOpen: (id: string) => void }> = ({ task, onOpen }) => (
   <div className={`trow${task.done ? ' done' : ''}`}>
     <button
       type="button"
@@ -241,7 +248,14 @@ const TaskRow: React.FC<{ task: Task }> = ({ task }) => (
     >
       <Icon name="check" />
     </button>
-    <span className="tt">{task.title}</span>
+    <button
+      type="button"
+      className="tt-btn"
+      onClick={() => onOpen(task.id)}
+      aria-label={`Edit task: ${task.title}`}
+    >
+      <span className="tt">{task.title}</span>
+    </button>
   </div>
 );
 
@@ -249,6 +263,11 @@ export const TasksCard: React.FC<CardProps> = ({ size }) => {
   const { data, actions } = useHome();
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const openTask = (id: string) => {
+    actions.navigate('tasks');
+    sendIntent('personalos:edit-task', id);
+  };
 
   const submitQuickAdd = (event: React.FormEvent) => {
     event.preventDefault();
@@ -292,7 +311,7 @@ export const TasksCard: React.FC<CardProps> = ({ size }) => {
           <span>open{data.tasks.length ? ` of ${data.tasks.length}` : ''}</span>
         </div>
         {first ? (
-          <TaskRow task={first} />
+          <TaskRow task={first} onOpen={openTask} />
         ) : (
           <HomeEmpty
             icon="todo"
@@ -312,7 +331,7 @@ export const TasksCard: React.FC<CardProps> = ({ size }) => {
       {head}
       <div className="tlist">
         {list.length ? (
-          list.map((task) => <TaskRow key={task.id} task={task} />)
+          list.map((task) => <TaskRow key={task.id} task={task} onOpen={openTask} />)
         ) : (
           <HomeEmpty
             icon="todo"
@@ -434,12 +453,16 @@ export const DeadlinesCard: React.FC<CardProps> = ({ size }) => {
     return (
       <>
         {head}
-        <div className={`dlrow${hot ? ' hot' : ''}`}>
+        <button
+          type="button"
+          className={`dlrow dlrow-btn${hot ? ' hot' : ''}`}
+          onClick={actions.openDeadlines}
+        >
           <div className="dlhead">
             <span>{deadline.title}</span>
             <em>{daysLeftLabel(deadline.due, data.today)}</em>
           </div>
-        </div>
+        </button>
       </>
     );
   }
@@ -453,7 +476,12 @@ export const DeadlinesCard: React.FC<CardProps> = ({ size }) => {
         const days = diffDays(deadline.due, data.today);
         const level = urgencyLevel(deadline.due, data.today);
         return (
-          <div key={deadline.id} className={`dlrow${days <= 3 ? ' hot' : ''}`}>
+          <button
+            key={deadline.id}
+            type="button"
+            className={`dlrow dlrow-btn${days <= 3 ? ' hot' : ''}`}
+            onClick={actions.openDeadlines}
+          >
             <div className="dlhead">
               <span>{deadline.title}</span>
               <em>{daysLeftLabel(deadline.due, data.today)}</em>
@@ -469,7 +497,7 @@ export const DeadlinesCard: React.FC<CardProps> = ({ size }) => {
                 ))}
               </div>
             )}
-          </div>
+          </button>
         );
       })}
     </>
@@ -639,12 +667,17 @@ export const HealthCard: React.FC<CardProps> = ({ size }) => {
 };
 
 export const CalendarCard: React.FC<CardProps> = ({ size }) => {
-  const { data } = useHome();
+  const { data, actions } = useHome();
   const head = (
     <h4>
       <span>{data.calendar.monthName}</span>
     </h4>
   );
+
+  const openCalendarDay = (iso?: string) => {
+    actions.navigate('plan');
+    if (iso) sendIntent('personalos:open-day', iso);
+  };
 
   if (size === 'S') {
     return (
@@ -672,6 +705,7 @@ export const CalendarCard: React.FC<CardProps> = ({ size }) => {
             return <b key={cell.key}>{cell.label}</b>;
           }
           const classes = [
+            'cgrid-cell',
             cell.kind === 'muted' ? 'm' : '',
             cell.isToday ? 't' : '',
             cell.hasDeadline ? 'd' : '',
@@ -679,9 +713,16 @@ export const CalendarCard: React.FC<CardProps> = ({ size }) => {
             .filter(Boolean)
             .join(' ');
           return (
-            <span key={cell.key} className={classes} title={cell.iso}>
+            <button
+              key={cell.key}
+              type="button"
+              className={classes}
+              title={cell.iso}
+              aria-label={cell.iso ? `Open ${fmtShort(cell.iso)} in Plan` : cell.label}
+              onClick={() => openCalendarDay(cell.iso)}
+            >
               {cell.label}
-            </span>
+            </button>
           );
         })}
       </div>

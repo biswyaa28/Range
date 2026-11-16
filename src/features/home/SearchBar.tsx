@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { AppRoute } from '@/hooks';
+import { sendIntent } from '@/hooks/useRouteIntent';
 import { useSettings, useStore } from '@/store';
 import { formatTimeHM } from '@/domain/dates';
 import { matchRanges, rankSearch, type SearchEntry, type TextRange } from '@/domain/search';
@@ -145,18 +146,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({ editing, onToggleEdit }) =
       return;
     }
     actions.navigate(route);
-    if (typeof window !== 'undefined') {
-      const event =
-        result.kind === 'task'
-          ? 'personalos:edit-task'
-          : result.kind === 'note'
-            ? 'personalos:open-note'
-            : 'personalos:edit-block';
-      window.setTimeout(
-        () => window.dispatchEvent(new CustomEvent(event, { detail: result.id })),
-        120,
-      );
-    }
+    const event =
+      result.kind === 'task'
+        ? 'personalos:edit-task'
+        : result.kind === 'note'
+          ? 'personalos:open-note'
+          : 'personalos:edit-block';
+    sendIntent(event, result.id);
   };
 
   const hasQuery = query.trim().length > 0;

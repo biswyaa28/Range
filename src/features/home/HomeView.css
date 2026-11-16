@@ -44,6 +44,103 @@
   min-height: 0;
 }
 
+/* The glyph is the only visible part; the button keeps a 44px hit area. */
+.srch-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+  transition: color 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+}
+
+.srch-clear:hover,
+.srch-clear:focus-visible {
+  color: var(--text);
+}
+
+.trow .tt-btn {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.trow.done .tt-btn .tt {
+  text-decoration: line-through;
+  color: var(--text-2);
+}
+
+.dlrow-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The day cells are buttons now, so the shared `.cgrid span` rules no longer
+   reach them; these mirror the legacy cell geometry exactly. */
+.cgrid .cgrid-cell {
+  position: relative;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  border-radius: 999px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cgrid .cgrid-cell.m {
+  color: var(--text-2);
+}
+
+.cgrid .cgrid-cell.t {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.cgrid .cgrid-cell.d::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #FF3B30;
+}
+
+@container (max-width: 279px) {
+  .cgrid .cgrid-cell {
+    height: 22px;
+    font-size: 11px;
+  }
+}
+
 /* On phones the customize chrome stacks without horizontal overflow. */
 @media (max-width: 699px) {
   .editbar {

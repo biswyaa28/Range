@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Haptics } from '@/engines';
+import { Icon } from './Icon';
 import './Toast.css';
 
 export interface ToastItem {
@@ -77,6 +78,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 {t.actionLabel}
               </button>
             )}
+            <button
+              type="button"
+              className="toast-dismiss-btn"
+              aria-label="Dismiss notification"
+              onClick={() => {
+                Haptics.tap();
+                dismissToast(t.id);
+              }}
+            >
+              <Icon name="x" size={14} />
+            </button>
           </div>
         ))}
       </div>

@@ -7,3 +7,4 @@ export * from './useSwipe';
 export * from './usePomodoro';
 export * from './useNoise';
 export * from './useShortcuts';
+export * from './useRouteIntent';

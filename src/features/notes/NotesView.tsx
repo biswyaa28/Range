@@ -10,6 +10,7 @@ import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
 import { useSwipe } from '@/hooks/useSwipe';
+import { useRouteIntent } from '@/hooks/useRouteIntent';
 import { fileSaver } from '@/platform';
 import {
   noteExportName,
@@ -264,26 +265,17 @@ export const NotesView: React.FC = () => {
   };
 
   // Palette results / create chord land here after navigation.
-  useEffect(() => {
-    const openNote = (event: Event) => {
-      const id = (event as CustomEvent<string>).detail;
-      if (!id) return;
-      setNotesSel(id);
-      setNotesEditing(true);
-    };
-    const newNote = () => {
-      const newId = createNote();
-      setNotesSel(newId);
-      setNotesEditing(true);
-      setTimeout(() => titleInputRef.current?.focus(), 50);
-    };
-    window.addEventListener('personalos:open-note', openNote);
-    window.addEventListener('personalos:new-note', newNote);
-    return () => {
-      window.removeEventListener('personalos:open-note', openNote);
-      window.removeEventListener('personalos:new-note', newNote);
-    };
-  }, []);
+  useRouteIntent('personalos:open-note', (id) => {
+    if (!id) return;
+    setNotesSel(id);
+    setNotesEditing(true);
+  });
+  useRouteIntent('personalos:new-note', () => {
+    const newId = createNote();
+    setNotesSel(newId);
+    setNotesEditing(true);
+    setTimeout(() => titleInputRef.current?.focus(), 50);
+  });
 
   const handleTogglePin = (id: string) => {
     flushDraft();

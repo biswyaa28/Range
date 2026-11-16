@@ -84,6 +84,10 @@ describe('NotesView', () => {
 
     fireEvent.change(searchInput, { target: { value: 'nomatchanything' } });
     expect(screen.getByText('No notes match “nomatchanything”.')).toBeDefined();
+
+    // Clear search button resets query
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    expect(screen.getByText('Alpha Note')).toBeDefined();
   });
 
   it('debounced autosave bumps updatedAt and persists content', async () => {
@@ -151,5 +155,27 @@ describe('NotesView', () => {
     expect(n).toBeDefined();
     expect(n?.title).toBe('');
     expect(n?.pinned).toBe(false);
+  });
+
+  it('deletes a note from the keyboard', () => {
+    renderNotesView();
+
+    const alphaRow = screen.getByText('Alpha Note').closest('button');
+    expect(alphaRow).not.toBeNull();
+
+    fireEvent.keyDown(alphaRow as HTMLButtonElement, { key: 'Delete' });
+    expect(store.get().notes.find((n) => n.id === 'n-1')?.deleted).toBe(true);
+  });
+
+  it('clears the search field with the Escape key', () => {
+    renderNotesView();
+
+    const searchInput = screen.getByPlaceholderText('Search notes…') as HTMLInputElement;
+    fireEvent.change(searchInput, { target: { value: 'nomatchanything' } });
+    expect(screen.getByText('No notes match “nomatchanything”.')).toBeDefined();
+
+    fireEvent.keyDown(searchInput, { key: 'Escape' });
+    expect(searchInput.value).toBe('');
+    expect(screen.getByText('Alpha Note')).toBeDefined();
   });
 });

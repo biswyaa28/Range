@@ -10,6 +10,7 @@ import {
 } from './shortcutKeys';
 import { pomodoro, noise } from '@/engines';
 import { openFocusMode } from '@/features/focus/focusModeBus';
+import { sendIntent } from '@/hooks/useRouteIntent';
 import { isPaletteOpen, openPalette } from '@/features/palette/paletteBus';
 
 export type ShortcutGroupName =
@@ -171,7 +172,7 @@ function focusWhenReady(selector: string): void {
 }
 
 function dispatch(name: string): void {
-  window.dispatchEvent(new CustomEvent(name));
+  sendIntent(name);
 }
 
 function uiBlocksShortcuts(): boolean {

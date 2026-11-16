@@ -9,6 +9,7 @@ import React, {
 import type { BentoCardSize } from '@/domain/types';
 import type { AppRoute } from '@/hooks';
 import { useMediaQuery, useReducedMotion } from '@/hooks';
+import { useRouteIntent } from '@/hooks/useRouteIntent';
 import {
   BENTO_GAP,
   BENTO_SIZE_NAME,
@@ -194,11 +195,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
     return () => document.body.classList.remove('customizing');
   }, [editing]);
 
-  useEffect(() => {
-    const onCustomize = () => setEditing((value) => !value);
-    window.addEventListener('personalos:customize-home', onCustomize);
-    return () => window.removeEventListener('personalos:customize-home', onCustomize);
-  }, []);
+  useRouteIntent('personalos:customize-home', () => setEditing((value) => !value));
 
   useEffect(() => {
     return () => {

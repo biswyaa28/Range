@@ -1,3 +1,11 @@
+/* The field already has its own clear button; hide the browser's. */
+.srch-box input::-webkit-search-cancel-button,
+.srch-box input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 .srch-label {
   display: flex;
   min-width: 0;

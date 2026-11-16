@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Task, TaskPriority, Block } from '@/domain/types';
 import { todayISO, addDays, diffDays, fmtShort, formatTimeHM, DAY_SHORT } from '@/domain/dates';
-import { parseQuickAdd } from '@/domain/quickAdd';
+import { parseQuickAdd, type QuickAddBlockPreview } from '@/domain/quickAdd';
 import { recomputeDayStats } from '@/domain/stats';
 import {
   useStore,
@@ -12,6 +12,7 @@ import {
   softUndeleteRecord,
   touchRecord,
 } from '@/store';
+import { useRouteIntent } from '@/hooks/useRouteIntent';
 import { Segmented } from '@/ui/Segmented';
 import { VirtualRows } from '@/ui/VirtualRows';
 import { Modal } from '@/ui/Modal';
@@ -215,16 +216,11 @@ export const TasksView: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Command-palette result: open the matching task editor after navigation.
-  useEffect(() => {
-    const onEditTask = (event: Event) => {
-      const id = (event as CustomEvent<string>).detail;
-      if (!id) return;
-      const task = store.get().tasks.find((item) => item.id === id && !item.deleted);
-      if (task) setEditingTask({ ...task });
-    };
-    window.addEventListener('personalos:edit-task', onEditTask);
-    return () => window.removeEventListener('personalos:edit-task', onEditTask);
-  }, []);
+  useRouteIntent('personalos:edit-task', (id) => {
+    if (!id) return;
+    const task = store.get().tasks.find((item) => item.id === id && !item.deleted);
+    if (task) setEditingTask({ ...task });
+  });
   const [deleteCandidate, setDeleteCandidate] = useState<Task | null>(null);
 
   // Scrollline progress handler
@@ -296,7 +292,7 @@ export const TasksView: React.FC = () => {
     () => (quickInput.trim() ? parseQuickAdd(quickInput) : null),
     [quickInput],
   );
-  const quickPreview = quickParsed?.kind === 'task' ? quickParsed : null;
+  const quickTask = quickParsed?.kind === 'task' ? quickParsed : null;
   const quickBlock = quickParsed?.kind === 'block' ? quickParsed : null;
 
   const handleToggle = useCallback(
@@ -389,16 +385,15 @@ export const TasksView: React.FC = () => {
     toast.showToast('Task added');
   };
 
-  const addBlockFromQuickPreview = () => {
-    if (!quickBlock) return;
+  const addBlockFromQuickPreview = (block: QuickAddBlockPreview) => {
     store.set((state) => {
       const newBlock = stampNewRecord<Partial<Block>>(
         {
-          title: quickBlock.title,
-          day: quickBlock.day,
-          start: quickBlock.start,
-          end: quickBlock.end,
-          category: quickBlock.category,
+          title: block.title,
+          day: block.day,
+          start: block.start,
+          end: block.end,
+          category: block.category,
           done: false,
           doneDates: [],
           source: 'personal',
@@ -418,19 +413,22 @@ export const TasksView: React.FC = () => {
 
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickPreview || !quickPreview.title) {
-      if (quickBlock) toast.showToast('Add schedule blocks from Plan');
+    if (!quickParsed || !quickParsed.title) return;
+
+    // A time range means the user described a schedule block, not a task.
+    if (quickParsed.kind === 'block') {
+      addBlockFromQuickPreview(quickParsed);
       return;
     }
 
     store.set((state) => {
       const newTask = stampNewRecord<Partial<Task>>(
         {
-          title: quickPreview.title,
-          due: quickPreview.due,
-          priority: quickPreview.priority,
+          title: quickParsed.title,
+          due: quickParsed.due,
+          priority: quickParsed.priority,
           done: false,
-          category: quickPreview.category || '',
+          category: quickParsed.category || '',
         },
         state.deviceId,
         () => crypto.randomUUID(),
@@ -490,13 +488,13 @@ export const TasksView: React.FC = () => {
         </button>
       </form>
 
-      {quickPreview && (
+      {quickTask && (
         <div className="tasks-quick-preview" aria-live="polite">
           <span>Preview:</span>
-          <span className="chip solid">{quickPreview.title}</span>
-          {quickPreview.due && <span className="chip">{fmtShort(quickPreview.due)}</span>}
-          <span className={`chip${quickPreview.priority === 'high' ? ' red' : ''}`}>
-            {prioInfo(quickPreview.priority).label}
+          <span className="chip solid">{quickTask.title}</span>
+          {quickTask.due && <span className="chip">{fmtShort(quickTask.due)}</span>}
+          <span className={`chip${quickTask.priority === 'high' ? ' red' : ''}`}>
+            {prioInfo(quickTask.priority).label}
           </span>
         </div>
       )}
@@ -512,14 +510,7 @@ export const TasksView: React.FC = () => {
             · {formatTimeHM(quickBlock.start, settings.clockFormat)}–
             {formatTimeHM(quickBlock.end, settings.clockFormat)}
           </span>
-          <button
-            type="button"
-            className="btn sm green"
-            onClick={addBlockFromQuickPreview}
-          >
-            Add block to Plan
-          </button>
-          <span>Add it from Plan.</span>
+          <span>Adding it to Plan.</span>
         </div>
       )}
 

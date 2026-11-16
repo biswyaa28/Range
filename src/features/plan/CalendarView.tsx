@@ -42,6 +42,7 @@ import { Popover } from '@/ui/Popover';
 import { Segmented } from '@/ui/Segmented';
 import { useToast } from '@/ui/Toast';
 import { useMediaQuery, useReducedMotion } from '@/hooks';
+import { useRouteIntent } from '@/hooks/useRouteIntent';
 import { Haptics } from '@/engines/haptics';
 import { BlockModal } from './BlockModal';
 import { ImportTimetableModal } from './ImportTimetableModal';
@@ -337,21 +338,15 @@ export const CalendarView: React.FC = () => {
   }, [mode, anchor]);
 
   // Palette create/open results and keyboard chord actions.
-  useEffect(() => {
-    const onEditBlock = (event: Event) => {
-      const id = (event as CustomEvent<string>).detail;
-      if (!id) return;
-      const block = store.get().blocks.find((item) => item.id === id && !item.deleted);
-      if (block) openEditor(block);
-    };
-    const onNewBlock = () => openNewBlock();
-    window.addEventListener('personalos:edit-block', onEditBlock);
-    window.addEventListener('personalos:new-block', onNewBlock);
-    return () => {
-      window.removeEventListener('personalos:edit-block', onEditBlock);
-      window.removeEventListener('personalos:new-block', onNewBlock);
-    };
-  }, [openEditor, openNewBlock]);
+  useRouteIntent('personalos:edit-block', (id) => {
+    if (!id) return;
+    const block = store.get().blocks.find((item) => item.id === id && !item.deleted);
+    if (block) openEditor(block);
+  });
+  useRouteIntent('personalos:new-block', () => openNewBlock());
+  useRouteIntent('personalos:open-day', (iso) => {
+    if (iso) openDay(iso);
+  });
 
   const toggleDone = useCallback(
     (block: Block, iso: string) => {

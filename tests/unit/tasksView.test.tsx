@@ -141,21 +141,25 @@ describe('TasksView', () => {
     expect(screen.queryByText('Preview:')).toBeNull();
   });
 
-  it('points block-shaped quick-add input to Plan instead of dropping it', () => {
+  it('creates a schedule block from block-shaped quick-add input', () => {
     renderTasksView();
 
     const quickInput = screen.getByPlaceholderText(/Quick add a task/i);
     fireEvent.change(quickInput, { target: { value: 'Study group 4-6pm' } });
 
     expect(screen.getByText('Schedule block:')).toBeDefined();
-    expect(screen.getByText('Add it from Plan.')).toBeDefined();
+    expect(screen.getByText('Adding it to Plan.')).toBeDefined();
     expect(screen.queryByText('Preview:')).toBeNull();
 
     fireEvent.submit(quickInput.closest('form')!);
 
-    // No task is created and the user is told where blocks live.
+    // The input described a block, so a block lands in Plan and no task is made.
     expect(store.get().tasks.some((t) => t.title === 'Study group')).toBe(false);
-    expect(screen.getByText('Add schedule blocks from Plan')).toBeDefined();
+    const created = store.get().blocks.find((b) => b.title === 'Study group');
+    expect(created).toBeDefined();
+    expect(created?.start).toBe('16:00');
+    expect(created?.end).toBe('18:00');
+    expect(screen.getByText('Schedule block added to Plan')).toBeDefined();
   });
 
   it('completes/toggles a task', () => {
@@ -200,7 +204,7 @@ describe('TasksView', () => {
     expect(taskInStore?.deleted).toBe(false);
   });
 
-  it('supports keyboard Space/Enter to toggle and Delete to remove', () => {
+  it('supports keyboard Space/Enter to toggle, E to edit, and Delete to remove', () => {
     renderTasksView();
 
     const taskRow = screen.getByRole('listitem', { name: 'Task: Task 1 Pending' });
@@ -208,6 +212,11 @@ describe('TasksView', () => {
     // Press Space to toggle
     fireEvent.keyDown(taskRow, { key: ' ' });
     expect(store.get().tasks.find((t) => t.id === 't-1')?.done).toBe(true);
+
+    // Press E to open edit modal
+    fireEvent.keyDown(taskRow, { key: 'e' });
+    expect(screen.getByRole('dialog', { name: 'Edit task' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     // Press Delete to trigger delete modal
     fireEvent.keyDown(taskRow, { key: 'Delete' });

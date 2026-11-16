@@ -322,4 +322,49 @@ describe('HomeView customization and actions', () => {
       expect(empty.querySelector('p')?.textContent?.trim().length).toBeGreaterThan(0);
     });
   });
+
+  it('opens the matching task, deadline and calendar day from Home cards', async () => {
+    const { onNavigate } = renderHome();
+    const events: Array<{ type: string; detail: unknown }> = [];
+    const record = (event: Event) => {
+      events.push({
+        type: event.type,
+        detail: (event as CustomEvent<string>).detail,
+      });
+    };
+    window.addEventListener('personalos:edit-task', record);
+    window.addEventListener('personalos:open-day', record);
+
+    // A task row opens the task editor in Tasks.
+    fireEvent.click(screen.getByLabelText('Edit task: Alpha assignment'));
+    expect(onNavigate).toHaveBeenCalledWith('tasks');
+    await vi.waitFor(() => {
+      expect(events.some((e) => e.type === 'personalos:edit-task')).toBe(true);
+    });
+    expect(events.find((e) => e.type === 'personalos:edit-task')?.detail).toBe(
+      'task-alpha',
+    );
+
+    // A deadline row opens the Deadlines view.
+    const deadlineRow = document.querySelector<HTMLElement>(
+      '.card[data-card="deadlines"] .dlrow-btn',
+    );
+    expect(deadlineRow).not.toBeNull();
+    fireEvent.click(deadlineRow as HTMLElement);
+    expect(window.location.hash).toBe('#deadlines');
+
+    // A calendar cell opens that day in Plan.
+    const cell = document.querySelector<HTMLElement>(
+      '.card[data-card="calendar"] .cgrid-cell',
+    );
+    expect(cell).not.toBeNull();
+    fireEvent.click(cell as HTMLElement);
+    expect(onNavigate).toHaveBeenCalledWith('plan');
+    await vi.waitFor(() => {
+      expect(events.some((e) => e.type === 'personalos:open-day')).toBe(true);
+    });
+
+    window.removeEventListener('personalos:edit-task', record);
+    window.removeEventListener('personalos:open-day', record);
+  });
 });

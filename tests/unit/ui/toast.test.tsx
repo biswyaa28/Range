@@ -55,4 +55,19 @@ describe('Toast component', () => {
     expect(screen.queryByText('Item deleted')).toBeNull();
     vi.useRealTimers();
   });
+
+  it('allows immediate manual dismissal via the close button', () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByText('Trigger toast'));
+    expect(screen.getByText('Item deleted')).toBeDefined();
+
+    const dismissBtn = screen.getByLabelText('Dismiss notification');
+    fireEvent.click(dismissBtn);
+    expect(screen.queryByText('Item deleted')).toBeNull();
+  });
 });

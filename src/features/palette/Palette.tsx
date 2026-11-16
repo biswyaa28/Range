@@ -7,6 +7,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import type { AppRoute } from '@/hooks';
+import { sendIntent } from '@/hooks/useRouteIntent';
 import type { IconName } from '@/ui/Icon';
 import {
   DAY_FULL,
@@ -75,7 +76,7 @@ function focusWhenReady(selector: string): void {
 }
 
 function customEvent(name: string, detail?: string): void {
-  window.dispatchEvent(new CustomEvent(name, { detail }));
+  sendIntent(name, detail ?? '');
 }
 
 export const Palette: React.FC<PaletteProps> = ({ onNavigate, onOpenShortcuts }) => {

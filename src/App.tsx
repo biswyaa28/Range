@@ -11,6 +11,7 @@ import { watchNotifications } from '@/features/settings/notificationSync';
 import { parseQuickAdd } from '@/domain/quickAdd';
 import type { Task } from '@/domain/types';
 import { takeSharedText } from '@/platform/shareBus';
+import { dropIntentsForOtherRoutes } from '@/hooks/useRouteIntent';
 import { routeAnnouncement, routeTitle } from '@/features/shell/routeTitles';
 
 const HomeView = React.lazy(() =>
@@ -226,6 +227,9 @@ const AppShell: React.FC = () => {
     if (previousRoute.current === rawRoute) return;
     previousRoute.current = rawRoute;
 
+    // An intent aimed at a view we are leaving is stale.
+    dropIntentsForOtherRoutes(route);
+
     const active = document.activeElement;
     const typing =
       active instanceof HTMLElement &&
@@ -252,7 +256,7 @@ const AppShell: React.FC = () => {
     };
     // Wait out the view transition so focus lands on the final heading.
     window.setTimeout(focusHeading, 360);
-  }, [rawRoute]);
+  }, [rawRoute, route]);
 
   const openCheatSheet = useCallback(() => setCheatOpen(true), []);
   const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
