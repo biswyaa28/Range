@@ -54,7 +54,7 @@ test.describe('Home View Desktop', () => {
     // Scope chips narrow the live results.
     await page.fill('#home-search', 'Finish OS');
     await expect(page.locator('#sres button:has-text("Finish OS assignment write-up")')).toBeVisible();
-    await page.click('.chips button:has-text("Blocks")');
+    await page.click('.chips button:has-text("Timetable")');
     await expect(page.locator('#sres .empty-s')).toHaveText('No matches.');
     await page.click('.chips button:has-text("All")');
     await page.fill('#home-search', '');
@@ -203,8 +203,10 @@ test.describe('Home View Mobile (390px)', () => {
     await expect(
       page.locator('#sres button:has-text("Finish OS assignment write-up")'),
     ).toBeVisible();
-    await page.click('#sres button:has-text("Finish OS assignment write-up")');
+    await page.press('#home-search', 'ArrowDown');
+    await page.press('#home-search', 'Enter');
     await expect(page).toHaveURL(/#tasks/);
+    await expect(page.locator('#edit-task-title')).toHaveValue('Finish OS assignment write-up');
 
     await page.goto('/#home');
     await page.click('.smart button:has-text("Start focus")');
