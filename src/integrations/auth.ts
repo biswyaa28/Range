@@ -210,10 +210,10 @@ export function createIntegrationAuth(overrides: Partial<IntegrationAuthDeps> = 
    * Revoking a Google token ends every scope on it. Callers must mark any other
    * enabled integration as reconnect-required after this succeeds.
    */
-  async function revoke(): Promise<void> {
+  async function revoke(): Promise<boolean> {
     const token = await readToken();
     await clearToken();
-    if (!token) return;
+    if (!token) return true;
     const credential = token.refreshToken || token.accessToken;
     try {
       await deps.fetch('https://oauth2.googleapis.com/revoke', {
@@ -221,9 +221,11 @@ export function createIntegrationAuth(overrides: Partial<IntegrationAuthDeps> = 
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `token=${encodeURIComponent(credential)}`,
       });
+      return true;
     } catch {
       // Local deletion is the guarantee; a network failure must not keep the
-      // token in secure storage.
+      // token in secure storage. The caller tells the user to reconnect.
+      return false;
     }
   }
 

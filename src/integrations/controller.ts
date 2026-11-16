@@ -90,9 +90,9 @@ export async function connectIntegration(id: IntegrationId): Promise<void> {
   }
 }
 
-export async function disconnectIntegration(id: IntegrationId): Promise<void> {
+export async function disconnectIntegration(id: IntegrationId): Promise<boolean> {
   const current = integrationStore.get();
-  await integrationAuth.revoke();
+  const revoked = await integrationAuth.revoke();
   integrationStore.clearIntegration(id);
   const remaining =
     id === 'gmail' ? current.settings.classroom : current.settings.gmail;
@@ -103,6 +103,30 @@ export async function disconnectIntegration(id: IntegrationId): Promise<void> {
     expiresAt: null,
     lastError: remaining ? 'Reconnect Google for the other integration.' : null,
   });
+  return revoked;
+}
+
+/**
+ * Wipes every local Google integration setting, cached item and token as part
+ * of “Clear data on this device”. Each enabled integration goes through the
+ * normal disconnect path, including the revoke request. The local wipe is
+ * unconditional; `revoked` is false when Google could not be reached.
+ */
+export async function disconnectAllIntegrations(): Promise<{ revoked: boolean }> {
+  const current = integrationStore.get();
+  const enabled = (['gmail', 'classroom'] as const).filter(
+    (id) => current.settings[id],
+  );
+  let revoked = true;
+  try {
+    for (const id of enabled) {
+      revoked = (await disconnectIntegration(id)) && revoked;
+    }
+    if (enabled.length === 0) revoked = await integrationAuth.revoke();
+  } finally {
+    integrationStore.reset();
+  }
+  return { revoked };
 }
 
 async function accessToken(): Promise<string> {

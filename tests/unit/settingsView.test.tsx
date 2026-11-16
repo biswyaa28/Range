@@ -258,7 +258,7 @@ describe('SettingsView', () => {
     expect(screen.queryByRole('dialog', { name: 'Import backup' })).toBeNull();
   });
 
-  it('requires the typed phrase before clearing every record', () => {
+  it('requires the typed phrase before clearing every record', async () => {
     store.set((state) => {
       state.profile.name = 'Ada';
       state.profile.onboarded = true;
@@ -294,8 +294,8 @@ describe('SettingsView', () => {
     expect(confirm.disabled).toBe(false);
     fireEvent.click(confirm);
 
+    await waitFor(() => expect(store.get().tasks).toHaveLength(0));
     const state = store.get();
-    expect(state.tasks).toHaveLength(0);
     expect(state.blocks).toHaveLength(0);
     expect(state.profile.name).toBe('');
     expect(state.profile.onboarded).toBe(false);

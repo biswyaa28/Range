@@ -49,6 +49,7 @@ import {
 } from '@/domain/backup';
 import { countOversizedNotes } from '@/domain/limits';
 import { integrationStore } from '@/store/integrationStore';
+import { disconnectAllIntegrations } from '@/integrations/controller';
 import { PRIVACY_POLICY_URL } from '@/config/links';
 import { resolveBentoLayout } from '@/domain/bentoLayout';
 import {
@@ -824,8 +825,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const confirmClear = (): void => {
+  const confirmClear = async (): Promise<void> => {
     if (!isClearConfirmation(clearText)) return;
+    const { revoked } = await disconnectAllIntegrations().catch(() => ({ revoked: false }));
     store.importAll(defaultState());
     store.set((current) => {
       current.clearedAt = defaultClock.nowISO();
@@ -833,7 +835,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setClearOpen(false);
     setClearText('');
     Haptics.warning();
-    toast.showToast('All data cleared — fresh start');
+    toast.showToast(
+      revoked
+        ? 'All data cleared — fresh start'
+        : 'All data cleared. Google could not be reached to revoke access — reconnect to retry.',
+    );
   };
 
   const groups: SettingGroup[] = [
@@ -1617,8 +1623,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           id: 'data-clear',
           title: 'Clear data on this device',
           description: sync.state.account
-            ? 'Removes blocks, tasks, notes, deadlines and history from this device only. Your cloud copy returns on the next sync.'
-            : 'Permanently removes every block, task, note, deadline and day of history from this device.',
+            ? 'Removes blocks, tasks, notes, deadlines, history and Google integration data from this device only. Your cloud copy returns on the next sync.'
+            : 'Permanently removes every block, task, note, deadline, day of history and Google integration data from this device.',
           keywords: 'delete wipe erase danger reset',
           danger: true,
           control: (
@@ -2084,8 +2090,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <Modal open={clearOpen} onClose={closeClear} title="Clear data on this device">
         <p className="hint">
-          This permanently removes every block, task, note, deadline and day of history
-          from this device only. It cannot be undone.
+          This permanently removes every block, task, note, deadline, day of history and
+          Google integration data from this device only. Cached Gmail and Classroom items,
+          filters, settings and saved tokens are wiped. It cannot be undone.
+        </p>
+        <p className="hint">
+          If Google cannot be reached, local Google data and tokens are still removed, and
+          revocation will need a reconnect.
         </p>
         {sync.state.account ? (
           <p className="hint">

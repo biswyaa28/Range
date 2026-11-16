@@ -243,6 +243,8 @@ test.describe('Settings desktop', () => {
     const dialog = page.getByRole('dialog', { name: 'Clear data on this device' });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText('from this device only');
+    await expect(dialog).toContainText('Cached Gmail and Classroom items');
+    await expect(dialog).toContainText('revocation will need a reconnect');
 
     const confirm = page.locator('[data-action="clear-confirm"]');
     await expect(confirm).toBeDisabled();
