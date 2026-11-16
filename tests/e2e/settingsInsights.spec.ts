@@ -265,6 +265,8 @@ test.describe('Insights desktop', () => {
     page,
   }) => {
     const consoleErrors = collectConsoleErrors(page);
+    // Keep the demo's relative 13-day history inside the current calendar week.
+    await page.clock.install({ time: new Date('2026-11-15T10:00:00') });
 
     await page.goto('/#insights');
     await expect(page.locator('.view-head h1')).toHaveText('Insights');
@@ -317,6 +319,7 @@ test.describe('Settings and Insights mobile (390px)', () => {
 
   test('settings and insights fit the viewport and keep their state', async ({ page }) => {
     const consoleErrors = collectConsoleErrors(page);
+    await page.clock.install({ time: new Date('2026-11-15T10:00:00') });
 
     await page.goto('/#settings');
     await expectNoOverflow(page);

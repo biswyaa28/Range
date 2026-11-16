@@ -122,7 +122,7 @@ which means CI could silently skip rules forever (see DEV-01).
 | A11Y-03 ✅ Fixed (`542aba6`, `c449c09`) | Med | Accessibility | `tests/e2e/accessibility.spec.ts:60-70` | Axe gate fails only on `serious`/`critical`; there is no automated keyboard/focus-trap regression test for palette, chat, focus mode, prompter. | Moderate WCAG issues and focus-trap regressions can ship green. | Include `moderate` (or a curated rule set) and add keyboard E2E coverage for each overlay. | M |
 | A11Y-04 ✅ Fixed (`09b1952`, `2aa08b1`) | Low | Accessibility | `src/styles/components.css:780` | White check glyph on `#34C759` is ≈2.1:1, below the 3:1 non-text minimum. | Done state is hard to perceive for low-vision users. | Use `--text`/dark glyph or a darker green for the checkbox fill. | S |
 | A11Y-05 ✅ Fixed (`9f9cd68`) | Low | Accessibility | `src/hooks/useShortcuts.ts:130`, `src/features/shortcuts/CheatSheet.tsx` | Shortcut labels say "Ctrl K" while macOS matches Meta too. | Wrong modifier shown on macOS. | Render `⌘` on macOS and `Ctrl` elsewhere. | S |
-| DATA-03 | Med | Sync/cost | `src/sync/firebaseAdapter.ts:179-195` | Pull issues `getDocs` on four collections with no `limit`/pagination, plus a forced full pull every 24 h. | Large histories re-read thousands of docs daily; risks Spark 50k/day reads across 2–3 devices. | Page pulls at ~300 docs (`limit` + `startAfter`) and surface a quota warning. | M |
+| DATA-03 ✅ Fixed (`328c0d5`) | Med | Sync/cost | `src/sync/firebaseAdapter.ts:179-195` | Pull issues `getDocs` on four collections with no `limit`/pagination, plus a forced full pull every 24 h. | Large histories re-read thousands of docs daily; risks Spark 50k/day reads across 2–3 devices. | Page pulls at ~300 docs (`limit` + `startAfter`) and surface a quota warning. | M |
 | DATA-04 ✅ Fixed | Low | Sync/rules | `firestore.rules:24-38` | `recordShape` does not require `id`/`updatedAt` and allows up to 40 arbitrary keys; no server-side byte cap (unavoidable in rules). | A malformed/oversized owner write is accepted and then has to be handled by every client. | Require `id`, `updatedAt`, `createdAt` and an allowlist of keys per collection; keep the client byte cap. | S |
 | ERR-01 ✅ Fixed | Med | Errors | `src/main.tsx:1-31` | No `window.addEventListener('unhandledrejection'/'error')`; only per-call catches. | Fire-and-forget promise failures (storage, Firebase, audio) are invisible and unreportable. | Add a global handler that logs redacted context and shows a toast once per session (AUDIT UX-01). | S |
 | MAC-01 ✅ Fixed | Med | macOS | `src-tauri/capabilities/default.json:11`, `src/platform/tauri.ts:9-16` | `fs:allow-write-file` is granted with no `fs:scope` path. In Tauri v2 the dialog does not widen the fs scope. | Backup export via "Save…" can fail at runtime with "forbidden path". **UNVERIFIED** — needs a signed local build. | Add a narrow scope (e.g. `$DOWNLOAD/**`, `$DOCUMENT/**`) or write via a Rust command that takes the dialog path. | S |
@@ -132,8 +132,8 @@ which means CI could silently skip rules forever (see DEV-01).
 | AI-01 ✅ Fixed | Med | AI | `src/engines/llm/readTools.ts:100-113` | `get_stats` accepts `range` but always sorts and `slice(-7)`; it then prints `Range: month/year`. | Model reports 7-day totals as a month/year total; wrong answers about progress. | Map range→window (`week` 7, `month` 30, `all`) and report the actual window. | S |
 | AI-02 | Med | AI privacy | `src/store/chatStore.ts:25-30,77-86`, `src/domain/chat.ts:8` | Transcript (which can quote note snippets) is plaintext in `localStorage` under `personalOS_chat_v1` and is only cleared on explicit sign-out or Clear. | Any local profile/extension or shared-browser user can read quoted private notes. | Don't persist tool/note-derived message bodies; or move the transcript to the encrypted secure store and clear on sign-out *and* on browser close. | M |
 | SEC-02 ✅ Fixed (`c027e8b`) | Low | Security/deps | `package.json` | `npm audit`: 7 high, all transitive through `firebase` → `@grpc/grpc-js` (no direct exploitable path in this app). | Vulnerable gRPC code ships in the bundle; no upstream fix without a breaking downgrade. | Track upstream Firestore releases; document the exception in `SECURITY.md`; re-run at each release. | S |
-| SEC-03 | Low | Security | `src/platform/web.ts:176-205` | Web "secure" vault keeps the AES key in the same IndexedDB as the ciphertext (non-extractable, but same-origin scripts can decrypt). | XSS or a malicious extension can recover the Gemini key on web. Documented as best-effort. | Keep native Keychain/Keystore as the only "secure" claim; label web storage "obfuscated" or require re-entry per session. | M |
-| PERF-01 | Low | Performance | `src/features/tasks/TasksView.tsx:574`, `src/features/notes/NotesView.tsx:292` | Task and note lists render every record; no virtualization or windowing. | Jank and memory growth with 1,000+ tasks/notes on low-end Android. | Virtualize long lists (or paginate closed/completed groups). | M |
+| SEC-03 ✅ Fixed (`3469878`) | Low | Security | `src/platform/web.ts:176-205` | Web "secure" vault keeps the AES key in the same IndexedDB as the ciphertext (non-extractable, but same-origin scripts can decrypt). | XSS or a malicious extension can recover the Gemini key on web. Documented as best-effort. | Keep native Keychain/Keystore as the only "secure" claim; label web storage "obfuscated" or require re-entry per session. | M |
+| PERF-01 ✅ Fixed (`ca7e9f2`) | Low | Performance | `src/features/tasks/TasksView.tsx:574`, `src/features/notes/NotesView.tsx:292` | Task and note lists render every record; no virtualization or windowing. | Jank and memory growth with 1,000+ tasks/notes on low-end Android. | Virtualize long lists (or paginate closed/completed groups). | M |
 | DEV-01 ✅ Fixed (`55db306`) | Med | DevOps | `.github/workflows/ci.yml:1-40` | CI runs only typecheck/lint/unit/build/CSS scan: no E2E, no rules emulator, no `cargo check`/`cargo audit`, no Gradle build, no dependency audit. | Platform and security regressions merge green; the rules suite is silently skippable. | Add jobs for e2e (with `npm run e2e`), rules (Java 21), `cargo check`/`audit`, `assembleDebug`, `npm audit --audit-level=high`. | M |
 | DEV-02 ✅ Fixed (`16d44d4`) | Low | DevOps | `package.json:4`, `src-tauri/tauri.conf.json:4`, `android/app/build.gradle:11` | Version drift: `0.1.0` in package/Tauri, `1.0` `versionName` and `versionCode 1` on Android. | Confusing release/version mapping; no changelog to reconcile. | Single-source the version (build script) and add `CHANGELOG.md` + tag-based release workflow. | S |
 | DEV-03 ✅ Fixed (`1ad7863`) | Low | Repo | repo root, `src-tauri/Cargo.toml:4-8` | No `LICENSE`; Cargo metadata placeholders; `skills-lock.json` (agent tooling) is tracked; no Git remote configured. | "All rights reserved" by default; no backup/CI integration; all 60 commits exist only locally. | Add a license, clean Cargo metadata, decide whether agent files belong in git, add `origin`. | S |
@@ -154,6 +154,18 @@ which means CI could silently skip rules forever (see DEV-01).
 
 Rules verification gap closed: `JAVA_HOME=/opt/homebrew/opt/openjdk@21 npm run test:rules` → 32 passed.
 
+## Batch 5 status (16 Nov 2026)
+
+| ID | Status | Commit | What changed |
+| --- | --- | --- | --- |
+| PERF-01 | FIXED | `ca7e9f2` | Measured virtual list in Tasks, Notes, Deadlines and AI chat; below 100 items renders normally. 5,000-task Playwright run renders 19 DOM rows, initial 264 ms (dev), bottom reachable. Baseline in `docs/PERFORMANCE.md`. |
+| DATA-03 | FIXED | `328c0d5` | Pulls page 300 documents at a time in `updatedAt, documentId` order, checkpoint after each page, resume at the failed page, and show a local daily read count against 50k. |
+| FEAT-01 | DONE | `5b78de8` | Ranked search with highlighted terms, private-note flag, arrow/Enter selection and deep links. Ranking unit tests plus desktop/mobile e2e. |
+| FEAT-02 | DONE | `a0628e8` | Opt-in safe Markdown preview (headings, emphasis, lists, checklists, code, validated links), no raw HTML, external links via system browser, per-note/all-note `.md` export. |
+| FEAT-03 | DONE | `1539214` | Habits with daily/weekday schedules, check-ins on Home and Plan, streaks, weekly heatmap, reminders, migration/backup/LWW tombstones, paged sync, rules shape checks. |
+| FEAT-04 | DONE (device UNVERIFIED) | `2837ae7` | Android Today widget and `ACTION_SEND` quick-add target; JSON snapshot in SharedPreferences. Mac `Cmd+Shift+Space` skipped: `tauri-plugin-global-shortcut` is not part of this build. |
+| SEC-03 | FIXED | `3469878` | Optional PBKDF2-SHA-256 + AES-GCM passphrase layer for the web AI key; default remains no passphrase; locked/unlock/replace states tested with injectable fake WebCrypto. |
+
 ## Feature gaps vs original goals
 
 | Goal | Status | Evidence / gap |
@@ -162,8 +174,10 @@ Rules verification gap closed: `JAVA_HOME=/opt/homebrew/opt/openjdk@21 npm run t
 | Time blocks turn green when done | **DONE** | `domain/recurrence.ts:24-45`, `styles/components.css:205-212,334-336` (`--green-tint`, green tick). |
 | Stats / progress | **DONE** | `features/insights/InsightsView.tsx` (streak, completion, weekly activity, honest empty state), `domain/stats.ts`. |
 | To-dos | **DONE** | `features/tasks/TasksView.tsx` — quick add parser, priorities, due dates, filters, swipe, undo. |
-| Notes | **DONE (plain text)** | `features/notes/NotesView.tsx` — search, pin, private flag, split pane. No markdown rendering/preview (ARCHITECTURE calls it a "markdown editor"). |
-| Tracker | **PARTIAL** | Streak + completion stats and Health Connect metrics; no habit/time tracker. |
+| Notes | **DONE** | `features/notes/NotesView.tsx` — plain-text storage, search, pin, private flag, split pane, safe Markdown preview (no raw HTML), per-note and all-note `.md` export. |
+| Tracker | **DONE** | Daily/weekday habits with Home/Plan check-ins, current/longest streaks, weekly Insights heatmap, optional reminders and synced tombstones (`domain/habits.ts`, `features/habits/HabitStrip.tsx`). |
+| Instant search | **DONE** | Ranked, highlighted, keyboard-first search across tasks, notes, timetable and deadlines; private notes stay searchable and flagged (`domain/search.ts`, `features/home/SearchBar.tsx`). |
+| Android widget / share | **DONE (device UNVERIFIED)** | Today widget (next 3 blocks + due tasks) reads a local SharedPreferences snapshot; shared text becomes a quick-added task. Manual steps in `docs/ANDROID_WIDGET.md`. |
 | Prompter | **DONE** | `features/focus/PrompterPanel.tsx` with keyboard controls and reading mode. |
 | Noise player (white/brown/pink) | **DONE** | `engines/noise.ts` synthesises all three live, no assets/network. |
 | Gmail summary via `gog` | **MISSING** | No Gmail/`gog` code anywhere; `src/integrations/` is README-only. |
@@ -220,8 +234,8 @@ A11Y-01 (titles/focus/skip link), A11Y-02 (44 px targets, inline text links exce
 **Batch 4 — release engineering — DONE 15 Nov 2026**
 AND-01 (keystore/env signing, AAB + APK, R8), AND-02 (native insets + safe-area vars), AND-03 (`personalos://` links), MAC-02 (bundle metadata + signed updater + Settings check), REL-01 (opt-in redacted crash reports, privacy policy, store kit), DEV-01 (full CI + tag release), DEV-02/03/04 (version sync, MIT, changelog, docs), SEC-02 (gRPC override; `npm audit` clean). Remaining manual checks: device edge-to-edge, VoiceOver/TalkBack, and a signed Play upload. macOS build succeeds here with `--debug`; a full `tauri build` needs Xcode.
 
-**Batch 5 — performance and new value**
-DATA-03 (paged pulls), PERF-01 (virtualized lists), AI-02 (transcript protection), then features: notifications, widgets, ICS/CSV import, Gmail/Classroom read-only.
+**Batch 5 — performance and new value — DONE 16 Nov 2026**
+DATA-03 (paged pulls), PERF-01 (virtualized lists), FEAT-01 (search), FEAT-02 (Markdown/export), FEAT-03 (habits), FEAT-04 (widget/share), SEC-03 (passphrase vault). AI-02 (transcript protection) remains open. Manual checks: Android widget/share on a device.
 
 ---
 

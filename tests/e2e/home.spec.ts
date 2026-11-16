@@ -203,7 +203,6 @@ test.describe('Home View Mobile (390px)', () => {
     await expect(
       page.locator('#sres button:has-text("Finish OS assignment write-up")'),
     ).toBeVisible();
-    await page.press('#home-search', 'ArrowDown');
     await page.press('#home-search', 'Enter');
     await expect(page).toHaveURL(/#tasks/);
     await expect(page.locator('#edit-task-title')).toHaveValue('Finish OS assignment write-up');

@@ -25,7 +25,6 @@ test.describe('5,000-task performance', () => {
       };
     });
 
-    // eslint-disable-next-line no-console
     console.log(
       `perf: initial=${initialRenderMs}ms fcp=${Math.round(metrics.fcp ?? 0)}ms domInteractive=${Math.round(metrics.domInteractive ?? 0)}ms domRows=${metrics.domRows}`,
     );
