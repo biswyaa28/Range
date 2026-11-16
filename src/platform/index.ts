@@ -54,6 +54,7 @@ export async function initializePlatform(): Promise<void> {
     module.initFocusWakeLock();
     module.initDeepLinks();
     module.initAppearanceAndKeyboard();
+    module.initTodayWidget();
     return;
   }
 

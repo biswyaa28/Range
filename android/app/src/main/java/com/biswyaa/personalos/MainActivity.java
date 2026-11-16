@@ -1,9 +1,13 @@
 package com.biswyaa.personalos;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+
+import org.json.JSONObject;
 
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -21,6 +25,7 @@ import com.getcapacitor.BridgeActivity;
  */
 public class MainActivity extends BridgeActivity {
     private WebView webView;
+    private String pendingSharedText;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -28,9 +33,11 @@ public class MainActivity extends BridgeActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         webView = getBridge().getWebView();
+        pendingSharedText = sharedText(getIntent());
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         webView.addJavascriptInterface(new ChromeBridge(), "AndroidInsets");
+        webView.addJavascriptInterface(new NativeBridge(), "AndroidWidget");
 
         ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
             Insets bars = windowInsets.getInsets(
@@ -52,6 +59,52 @@ public class MainActivity extends BridgeActivity {
             return windowInsets;
         });
         ViewCompat.requestApplyInsets(webView);
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        pendingSharedText = sharedText(intent);
+        if (pendingSharedText != null && webView != null) {
+            String script = "window.dispatchEvent(new CustomEvent('personalos:share-text',{detail:"
+                + JSONObject.quote(pendingSharedText) + "}))";
+            webView.post(() -> webView.evaluateJavascript(script, null));
+            pendingSharedText = null;
+        }
+    }
+
+    private static String sharedText(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return null;
+        String type = intent.getType();
+        if (type == null || !type.startsWith("text/")) return null;
+        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (text == null) return null;
+        String trimmed = text.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /** Bridges that need a Context or must touch the UI thread. */
+    private final class NativeBridge {
+        @JavascriptInterface
+        public String consumeSharedText() {
+            String text = pendingSharedText;
+            pendingSharedText = null;
+            return text;
+        }
+
+        @JavascriptInterface
+        public void updateSnapshot(String json) {
+            if (json == null || json.length() > 64_000) return;
+            try {
+                new JSONObject(json);
+            } catch (Exception ignored) {
+                return;
+            }
+            SharedPreferences prefs = getSharedPreferences(TodayWidgetProvider.PREFS, MODE_PRIVATE);
+            prefs.edit().putString(TodayWidgetProvider.SNAPSHOT_KEY, json).apply();
+            TodayWidgetProvider.updateAll(MainActivity.this);
+        }
     }
 
     /** Keeps the empty inset strips in step with the in-app theme. */

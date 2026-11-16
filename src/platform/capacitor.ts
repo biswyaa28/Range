@@ -11,6 +11,9 @@ import { isFocusModeOpen, closeFocusMode, subscribeFocusMode } from '@/features/
 import { isPaletteOpen, closePalette } from '@/features/palette/paletteBus';
 import { isChatOpen, closeChat } from '@/features/chat/chatBus';
 import { routeFromDeepLink } from '@/domain/deepLink';
+import { blocksForDate } from '@/domain/recurrence';
+import { nowHM, todayISO } from '@/domain/dates';
+import { androidBridge, initAndroidShare } from './androidShare';
 import type { FileSaver, HapticsAdapter, StorageAdapter, SecureStorageAdapter } from './types';
 import { webStorage } from './web';
 
@@ -105,6 +108,43 @@ export class CapacitorFileSaver implements FileSaver {
       dialogTitle: 'Save Personal OS backup',
     });
   }
+}
+
+let todayWidgetInitialized = false;
+
+/** Pushes the next three blocks and today's tasks into the native widget. */
+export function initTodayWidget(): void {
+  if (todayWidgetInitialized) return;
+  todayWidgetInitialized = true;
+
+  initAndroidShare();
+
+  const update = (): void => {
+    const bridge = androidBridge();
+    if (!bridge?.updateSnapshot) return;
+    try {
+      const state = defaultStore.get();
+      const today = todayISO();
+      const now = nowHM();
+      const blocks = blocksForDate(state.blocks, today)
+        .filter((block) => !block.deleted && block.end > now)
+        .sort((a, b) => a.start.localeCompare(b.start))
+        .slice(0, 3)
+        .map((block) => ({ start: block.start, title: block.title }));
+      const rank = { high: 0, med: 1, low: 2 };
+      const tasks = state.tasks
+        .filter((task) => !task.deleted && !task.done && task.due === today)
+        .sort((a, b) => rank[a.priority] - rank[b.priority] || a.title.localeCompare(b.title))
+        .slice(0, 3)
+        .map((task) => ({ title: task.title }));
+      bridge.updateSnapshot(JSON.stringify({ today, blocks, tasks }));
+    } catch {
+      // The widget is best-effort; never interrupt the app for it.
+    }
+  };
+
+  defaultStore.subscribe(update);
+  update();
 }
 
 let backButtonInitialized = false;

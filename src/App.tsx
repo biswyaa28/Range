@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useHashRoute, useShortcuts, type AppRoute } from '@/hooks';
-import { applySettings, settingsStore, useSettings, useStore } from '@/store';
+import { applySettings, settingsStore, stampNewRecord, store, useSettings, useStore } from '@/store';
 import { ACCENTS } from '@/domain/color';
 import { isHexColor } from '@/domain/settings';
 import type { AccentColor, SettingsPatch } from '@/domain/settings';
@@ -8,6 +8,9 @@ import { ToastProvider } from '@/ui/Toast';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { TopNav, BottomTabBar, Breadcrumb, StorageNotice } from '@/features/shell';
 import { watchNotifications } from '@/features/settings/notificationSync';
+import { parseQuickAdd } from '@/domain/quickAdd';
+import type { Task } from '@/domain/types';
+import { takeSharedText } from '@/platform/shareBus';
 import { routeAnnouncement, routeTitle } from '@/features/shell/routeTitles';
 
 const HomeView = React.lazy(() =>
@@ -105,6 +108,40 @@ const AppShell: React.FC = () => {
 
   // Local reminders follow the data and notification settings.
   useEffect(() => watchNotifications(), []);
+
+  // Android share-target: turn shared text into a task, then show the list.
+  useEffect(() => {
+    const addShared = (text: string): void => {
+      const raw = text.trim();
+      if (!raw) return;
+      const parsed = parseQuickAdd(raw);
+      const title = (parsed.kind === 'task' ? parsed.title : raw).slice(0, 200).trim();
+      if (!title) return;
+      store.set((state) => {
+        const task = stampNewRecord<Partial<Task>>(
+          {
+            title,
+            due: parsed.kind === 'task' ? parsed.due : null,
+            priority: parsed.kind === 'task' ? parsed.priority : 'med',
+            category: parsed.kind === 'task' ? parsed.category : '',
+            done: false,
+          },
+          state.deviceId,
+          () => crypto.randomUUID(),
+        ) as Task;
+        state.tasks.unshift(task);
+      });
+      window.location.hash = '#tasks';
+    };
+
+    const initial = takeSharedText();
+    if (initial) addShared(initial);
+    const onShare = (event: Event): void => {
+      addShared(String((event as CustomEvent<string>).detail ?? ''));
+    };
+    window.addEventListener('personalos:share-text', onShare);
+    return () => window.removeEventListener('personalos:share-text', onShare);
+  }, []);
 
   // Legacy surfaces (top-nav theme menu, onboarding, imports) still write the
   // original groups. Mirror those writes into the settings store so there is a
