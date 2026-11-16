@@ -10,6 +10,7 @@
     "notification:default",
     "updater:default",
     "dialog:allow-save",
+    "opener:default",
     "fs:allow-write-file",
     {
       "identifier": "fs:scope",

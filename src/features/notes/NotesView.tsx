@@ -5,11 +5,20 @@ import { NOTE_BODY_MAX_CHARS } from '@/domain/limits';
 import { useStore, store } from '@/store';
 import { stampNewRecord, softDeleteRecord, softUndeleteRecord, touchRecord } from '@/store/stamp';
 import { Icon } from '@/ui/Icon';
+import { Markdown } from '@/ui/Markdown';
 import { VirtualRows } from '@/ui/VirtualRows';
 import { useToast } from '@/ui/Toast';
 import { Haptics } from '@/engines/haptics';
 import { useSwipe } from '@/hooks/useSwipe';
+import { fileSaver } from '@/platform';
+import {
+  noteExportName,
+  noteToMarkdown,
+  notesToMarkdown,
+} from '@/domain/markdown';
+import { todayISO } from '@/domain/dates';
 import './NotesView.css';
+import '@/ui/Markdown.css';
 
 interface NoteRowProps {
   note: Note;
@@ -95,6 +104,7 @@ export const NotesView: React.FC = () => {
   const [notesSel, setNotesSel] = useState<string | null>(null);
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesQuery, setNotesQuery] = useState('');
+  const [preview, setPreview] = useState(false);
 
   // Draft text in editor for currently active note
   const [draftTitle, setDraftTitle] = useState('');
@@ -205,7 +215,39 @@ export const NotesView: React.FC = () => {
   const handleSelectNote = (id: string) => {
     flushDraft();
     setNotesSel(id);
+    setPreview(false);
     setNotesEditing(true);
+  };
+
+  const handleExportNote = async () => {
+    if (!sel) return;
+    flushDraft();
+    try {
+      await fileSaver.saveFile(
+        new Blob([noteToMarkdown({ title: draftTitle, body: draftBody })], {
+          type: 'text/markdown;charset=utf-8',
+        }),
+        noteExportName(draftTitle, sel.id),
+      );
+      toast.showToast('Note exported');
+    } catch {
+      toast.showToast('Could not export the note');
+    }
+  };
+
+  const handleExportAll = async () => {
+    flushDraft();
+    try {
+      await fileSaver.saveFile(
+        new Blob([notesToMarkdown(liveNotes, todayISO())], {
+          type: 'text/markdown;charset=utf-8',
+        }),
+        `notes-${todayISO()}.md`,
+      );
+      toast.showToast('All notes exported');
+    } catch {
+      toast.showToast('Could not export notes');
+    }
   };
 
   const handleNewNote = () => {
@@ -343,6 +385,17 @@ export const NotesView: React.FC = () => {
             </div>
             <button
               type="button"
+              className="ibtn"
+              data-action="notes-export-all"
+              aria-label="Export all notes as markdown"
+              title="Export all notes as Markdown"
+              disabled={liveNotes.length === 0}
+              onClick={() => void handleExportAll()}
+            >
+              <Icon name="download" />
+            </button>
+            <button
+              type="button"
               className="btn yellow"
               data-action="note-new"
               onClick={handleNewNote}
@@ -381,6 +434,30 @@ export const NotesView: React.FC = () => {
         {sel ? (
           <div className="panel notes-editor">
             <div className="notes-toolbar">
+              <button
+                type="button"
+                className={`ibtn${preview ? ' on' : ''}`}
+                data-action="note-preview"
+                aria-pressed={preview}
+                aria-label={preview ? 'Edit note' : 'Preview note'}
+                title={preview ? 'Edit note' : 'Preview markdown'}
+                onClick={() => {
+                  flushDraft();
+                  setPreview((value) => !value);
+                }}
+              >
+                <Icon name={preview ? 'note' : 'eye'} />
+              </button>
+              <button
+                type="button"
+                className="ibtn"
+                data-action="note-export"
+                aria-label="Export note as markdown"
+                title="Export note as Markdown"
+                onClick={() => void handleExportNote()}
+              >
+                <Icon name="download" />
+              </button>
               <button
                 type="button"
                 className="ibtn mobile-only"
@@ -436,15 +513,19 @@ export const NotesView: React.FC = () => {
               </button>
             </div>
 
-            <textarea
-              id="note-body"
-              placeholder="Start writing…"
-              aria-label="Note body"
-              maxLength={NOTE_BODY_MAX_CHARS}
-              value={draftBody}
-              onChange={handleBodyChange}
-              onBlur={flushDraft}
-            />
+            {preview ? (
+              <Markdown source={draftBody} />
+            ) : (
+              <textarea
+                id="note-body"
+                placeholder="Start writing…"
+                aria-label="Note body"
+                maxLength={NOTE_BODY_MAX_CHARS}
+                value={draftBody}
+                onChange={handleBodyChange}
+                onBlur={flushDraft}
+              />
+            )}
 
             <div className="notes-foot">
               <span id="note-saved" className={savedBadgeShow ? 'show' : ''}>
