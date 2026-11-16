@@ -541,7 +541,10 @@ export function parseDue(
     const second = Number(numeric[2]);
     let year = Number(numeric[3]);
     if (year < 100) year += 2000;
-    const dayFirst = first > 12 || second <= 12;
+    // Numeric dates from university mail are day-first (DD/MM/YYYY, DD-MM-YY,
+    // DD.MM.YYYY). Only treat them as month-first when the second number cannot
+    // be a month, e.g. 05/18/2026.
+    const dayFirst = !(first <= 12 && second > 12);
     const day = dayFirst ? first : second;
     const month = dayFirst ? second : first;
     const date = dateFromParts(year, month - 1, day, reference);

@@ -123,6 +123,14 @@ describe('Gmail extraction', () => {
     });
   });
 
+  it('defaults numeric dates to day-first and accepts two-digit years', () => {
+    expect(parseDue('submit 05/09/2026', now).date).toBe('2026-09-05');
+    expect(parseDue('submit 18/11/2026', now).date).toBe('2026-11-18');
+    expect(parseDue('submit 05/18/2026', now).date).toBe('2026-05-18');
+    expect(parseDue('submit 05/09/26', now).date).toBe('2026-09-05');
+    expect(parseDue('submit 18-11-26', now).date).toBe('2026-11-18');
+  });
+
   it('does not invent dates for noisy non-English mail', () => {
     const digest = extractGmailDigest(
       [
